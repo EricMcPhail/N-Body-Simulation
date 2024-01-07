@@ -3,13 +3,22 @@
 #include "Model.hpp"
 #include "Shader.hpp"
 #include "ParticleManager.hpp"
+#include "ThreadPool.hpp"
+#include "Particle.hpp"
+#include "TextRenderer.hpp"
+
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/gtc/matrix_transform.hpp>
 
 #include  <algorithm> // for min
-#include "ThreadPool.hpp"
+#include <iostream> // for std::cout
+
+#define DRAW_DEBUG_DATA_IN_WINDOW 1
+#if DRAW_DEBUG_DATA_IN_WINDOW
+#include <format>
+#endif
 
 
 using vec3 = glm::highp_dvec3;
@@ -120,10 +129,9 @@ Simulation::Simulation() {
         throw -1;
     }
 
-    // configure global opengl state
-    // -----------------------------
-    glEnable(GL_DEPTH_TEST);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+
+
     //----------------------------------------------------------------------------
     thread_pool = new ThreadPool();
     shader = new Shader("vertex_shader.vs", "fragment_shader.fs");
@@ -240,11 +248,17 @@ void Simulation::startMultiThreaded() {
 }
 #endif
 
+
+
+
 void Simulation::startSingleThreaded() {
     pm->add(std::numeric_limits<double>::infinity(), glm::vec3{ -5.0, 0.0,0.0 });
     pm->add(1.0, glm::vec3{5.0,0.0,0.0});
     pm->add(1000000.0, glm::vec3{ 15.0,0.0,0.0 }, vec3{-1.0, 0.0, 0.0});
 
+#if DRAW_DEBUG_DATA_IN_WINDOW
+    TextRenderer tr(SCR_WIDTH, SCR_HEIGHT);
+#endif 
 
     pm->particles[0].is_affected_by_gravity = false;
     pm->particles[1].is_affected_by_gravity = false;
@@ -336,21 +350,6 @@ void Simulation::startSingleThreaded() {
             render_delta_time_seconds_sum = 0.0;
             everything_else_delta_time_seconds_sum = 0.0;
         }
-
-        std::cout << "FPS: " << FPS << '\n';
-        std::cout << "input_delta_time_seconds_average: " << input_delta_time_seconds_average << '\n';
-        std::cout << "physics_delta_time_seconds_average: " << physics_delta_time_seconds_average << '\n';
-        std::cout << "gpu_data_update_delta_time_seconds_average: " << gpu_data_update_delta_time_seconds_average << '\n';
-        std::cout << "render_delta_time_seconds_average: " << render_delta_time_seconds_average << '\n';
-        std::cout << "everything_else_delta_time_seconds_average: " << everything_else_delta_time_seconds_average << '\n';
-        std::cout << "delta_time: " << delta_time << '\n';
-        std::cout << "input_delta_time_seconds: " << input_delta_time_seconds.count() << '\n';
-        std::cout << "physics_delta_time_seconds: " << physics_delta_time_seconds.count() << '\n';
-        std::cout << "gpu_data_update_delta_time_seconds: " << gpu_data_update_delta_time_seconds.count() << '\n';
-        std::cout << "render_delta_time_seconds: " << render_delta_time_seconds.count() << '\n';
-        std::cout << "everything_else_delta_time_seconds: " << everything_else_delta_time_seconds << '\n';
-        std::cout << "Middle Particle Collision Count: " << pm->particles[1].collision_count << '\n';
-        printf("\x1b[H");
         // input
         // -----
         input_start_time_nanoseconds = std::chrono::high_resolution_clock::now();
@@ -371,7 +370,35 @@ void Simulation::startSingleThreaded() {
         gpu_data_update_end_time_nanoseconds = std::chrono::high_resolution_clock::now();
 
         render_start_time_nanoseconds = std::chrono::high_resolution_clock::now();
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
         drawAllParticles(*current_particle_model);
+#if DRAW_DEBUG_DATA_IN_WINDOW
+        tr.RenderText(std::format("FPS: {}", FPS), 0.1, 0.1, 0.25, glm::vec3{ 1.0f, 1.0f, 1.0f });
+        tr.RenderText(std::format("input_delta_time_seconds_average: {}", input_delta_time_seconds_average), 0.1, 25, 0.25, glm::vec3{ 1.0f, 1.0f, 1.0f });
+        tr.RenderText(std::format("physics_delta_time_seconds_average: {}", physics_delta_time_seconds_average), 0.1, 50, 0.25, glm::vec3{ 1.0f, 1.0f, 1.0f });
+        tr.RenderText(std::format("gpu_data_update_delta_time_seconds_average: {}", gpu_data_update_delta_time_seconds_average), 0.1, 75, 0.25, glm::vec3{ 1.0f, 1.0f, 1.0f });
+        tr.RenderText(std::format("render_delta_time_seconds_average: {}", render_delta_time_seconds_average), 0.1, 100, 0.25, glm::vec3{ 1.0f, 1.0f, 1.0f });
+        tr.RenderText(std::format("everything_else_delta_time_seconds_average: {}", everything_else_delta_time_seconds_average), 0.1, 125, 0.25, glm::vec3{ 1.0f, 1.0f, 1.0f });
+        tr.RenderText(std::format("delta_time: {}", delta_time), 0.1, 150, 0.25, glm::vec3{ 1.0f, 1.0f, 1.0f });
+        tr.RenderText(std::format("Middle Particle Collision Count: {}", pm->particles[1].collision_count), 0.1, 175, 0.25, glm::vec3{ 1.0f, 1.0f, 1.0f });
+#else
+        std::cout << "FPS: " << FPS << '\n';
+        std::cout << "input_delta_time_seconds_average: " << input_delta_time_seconds_average << '\n';
+        std::cout << "physics_delta_time_seconds_average: " << physics_delta_time_seconds_average << '\n';
+        std::cout << "gpu_data_update_delta_time_seconds_average: " << gpu_data_update_delta_time_seconds_average << '\n';
+        std::cout << "render_delta_time_seconds_average: " << render_delta_time_seconds_average << '\n';
+        std::cout << "everything_else_delta_time_seconds_average: " << everything_else_delta_time_seconds_average << '\n';
+        std::cout << "delta_time: " << delta_time << '\n';
+        std::cout << "input_delta_time_seconds: " << input_delta_time_seconds.count() << '\n';
+        std::cout << "physics_delta_time_seconds: " << physics_delta_time_seconds.count() << '\n';
+        std::cout << "gpu_data_update_delta_time_seconds: " << gpu_data_update_delta_time_seconds.count() << '\n';
+        std::cout << "render_delta_time_seconds: " << render_delta_time_seconds.count() << '\n';
+        std::cout << "everything_else_delta_time_seconds: " << everything_else_delta_time_seconds << '\n';
+        std::cout << "Middle Particle Collision Count: " << pm->particles[1].collision_count << '\n';
+        printf("\x1b[H");
+#endif
         render_end_time_nanoseconds = std::chrono::high_resolution_clock::now();
 
         // ending stuff
@@ -394,13 +421,18 @@ void Simulation::updateAllParticlesPositionDataInGPU(Model& particle_model, cons
 }
 
 void Simulation::drawAllParticles(const Model &particle_model) const {
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // configure global opengl state
+    // -----------------------------
+
+
+
     particle_model.drawInstanced(*shader);
+
+
 }
 
 void Simulation::loadDefaultParticleModel() {
-    current_particle_model = new Model(1.0, 1000);
+    current_particle_model = new Model(1.0, 12);
     pm = new ParticleManager();
 }
 

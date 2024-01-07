@@ -1,11 +1,15 @@
 #include "ParticleManager.hpp"
+#include "PhysicsEquations.hpp"
+#include "Particle.hpp"
+#include "Model.hpp"
+
+
 #include <utility> // for std::pair
 #include <vector> // for std::vector
 #include <glm/gtc/matrix_transform.hpp> // for glm::translate
-#include <glm/glm.hpp> // also needed for vec stuff i think
 
-#include "Model.hpp"
-#include "PhysicsEquations.hpp"
+
+
 
 vec3 ParticleManager::getFutureNetForce(size_t particle_index, const double future_time, const std::vector<vec3>& future_positions, const std::vector<vec3>& future_velocities) const {
     vec3 netForceOnParticle = vec3(0.0, 0.0, 0.0);

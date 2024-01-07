@@ -1,9 +1,11 @@
 #pragma once
 #include <vector>
+
 #include <glm/glm.hpp>
 
-class Shader;
-struct Vertex;
+extern class Shader;
+extern struct Vertex;
+
 
 // TODO: make this a singleton class, I fucing am so lazy
 class Model {
@@ -21,11 +23,12 @@ public:
     void buildCircle(float radius, size_t num_triangles, const glm::vec3 & colour = glm::vec3{ 1.0f, 1.0f, 1.0f });
 
     void createBuffer();
+    //tt
 
     void updateData(const glm::mat4& transformations);
     void updateInstancedData(const std::vector<glm::mat4>& transformations);
-    void draw(const Shader& shader) const;
-    void drawInstanced(const Shader& shader) const;
+    void draw(const Shader& shader, bool wire_frame = false) const;
+    void drawInstanced(const Shader& shader, bool wire_frame = false) const;
     void updateAndDraw(const glm::mat4& transformation, Shader& shader);
     void updateAndDrawInstanced(const std::vector<glm::mat4>& transformations, Shader& shader);
 };

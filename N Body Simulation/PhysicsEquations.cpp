@@ -1,5 +1,6 @@
 #include "PhysicsEquations.hpp"
 #include "Constants.hpp"
+#include "Particle.hpp"
 #include <limits> // for std::infinity
 
 std::pair<double, double> solveQuadradic(double a, double b, double c) {

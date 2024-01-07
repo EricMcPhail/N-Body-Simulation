@@ -1,4 +1,5 @@
 #pragma once
+
 #include <numbers>
 
 constexpr inline double PI = std::numbers::pi;

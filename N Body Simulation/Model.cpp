@@ -3,6 +3,8 @@
 #include "Constants.hpp" // needed for pi
 #include <cassert>
 
+
+
 struct Vertex {
     glm::vec3 position;
     glm::vec3 colour;
@@ -100,18 +102,32 @@ void Model::updateInstancedData(const std::vector<glm::mat4>& transformations) {
     number_of_instances = transformations.size();
 }
 
-void Model::draw(const Shader& shader) const {
+void Model::draw(const Shader& shader, bool wire_frame) const {
+    const bool keep_GL_DEPTH_TEST_enabled = glIsEnabled(GL_DEPTH_TEST);
+    glEnable(GL_DEPTH_TEST);
+    if (wire_frame) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
     shader.use();
     glBindVertexArray(vertex_array_object_ID);
     glDrawArrays(GL_TRIANGLE_FAN, 0, vertices.size());
     glBindVertexArray(0);
+
+    if (!keep_GL_DEPTH_TEST_enabled) glDisable(GL_DEPTH_TEST);
+    if (wire_frame) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
 
-void Model::drawInstanced(const Shader& shader) const {
+void Model::drawInstanced(const Shader& shader, bool wire_frame) const {
+    const bool keep_GL_DEPTH_TEST_enabled = glIsEnabled(GL_DEPTH_TEST);
+    glEnable(GL_DEPTH_TEST);
+    if (wire_frame) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    
     shader.use();
     glBindVertexArray(vertex_array_object_ID);
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, vertices.size(), number_of_instances);
     glBindVertexArray(0);
+
+    if (!keep_GL_DEPTH_TEST_enabled) glDisable(GL_DEPTH_TEST);
+    if (wire_frame) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
 
 void Model::updateAndDraw(const glm::mat4& transformation, Shader& shader) {

@@ -1,6 +1,9 @@
 #pragma once
-#include "Particle.hpp"
 #include <utility> // for std::pair
+#include <glm/glm.hpp>
+using vec3 = glm::highp_dvec3;
+
+extern class Particle;
 
 std::pair<double, double> solveQuadradic(double a, double b, double c);
 

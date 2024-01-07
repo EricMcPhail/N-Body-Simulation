@@ -54,6 +54,9 @@
     <ClCompile Include="ThreadPool.cpp">
       <Filter>Currently Unused</Filter>
     </ClCompile>
+    <ClCompile Include="TextRenderer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.hpp">
@@ -86,12 +89,21 @@
     <ClInclude Include="PhysicsTests.hpp">
       <Filter>Currently Unused</Filter>
     </ClInclude>
+    <ClInclude Include="TextRenderer.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="fragment_shader.fs">
       <Filter>Shaders</Filter>
     </None>
     <None Include="vertex_shader.vs">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="text.vs">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="text.fs">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

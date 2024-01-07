@@ -1,14 +1,15 @@
 #pragma once
-#include "Particle.hpp"
 #include <vector>
 
-class Model;
-class Shader;
+extern class Model;
+extern class Shader;
+extern class Particle;
+
+#include <glm/glm.hpp>
+
+using vec3 = glm::highp_dvec3;
 
 class ParticleManager {
-
-
-
     vec3 getFutureNetForce(size_t particle_index, const double future_time, const std::vector<vec3>& future_positions, const std::vector<vec3>& future_velocities) const;
     
     vec3 getFutureNetAcceleration(size_t particle_index, const double future_time, const std::vector<vec3>& future_positions, const std::vector<vec3>& future_velocities) const;

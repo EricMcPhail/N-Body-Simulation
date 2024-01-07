@@ -1,15 +1,15 @@
 #pragma once
 #include <vector>
-#include <glm/glm.hpp>
 #include <chrono>
 #include <mutex>
+#include <glm/glm.hpp>
 
-class GLFWwindow;
-class Camera;
-class Shader;
-class Model;
-class ParticleManager;
-class ThreadPool;
+extern class GLFWwindow;
+extern class Camera;
+extern class Shader;
+extern class Model;
+extern class ParticleManager;
+extern class ThreadPool;
 
 class Simulation {
 public:
@@ -71,3 +71,5 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow* window);
+
+
