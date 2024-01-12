@@ -152,13 +152,16 @@
     <ClCompile Include="ThreadPool.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AABB.hpp" />
     <ClInclude Include="Camera.hpp" />
     <ClInclude Include="Constants.hpp" />
+    <ClInclude Include="MathFunctions.hpp" />
     <ClInclude Include="Model.hpp" />
     <ClInclude Include="Particle.hpp" />
     <ClInclude Include="ParticleManager.hpp" />
     <ClInclude Include="PhysicsEquations.hpp" />
     <ClInclude Include="PhysicsTests.hpp" />
+    <ClInclude Include="Polygon.hpp" />
     <ClInclude Include="Shader.hpp" />
     <ClInclude Include="Simulation.hpp" />
     <ClInclude Include="TextRenderer.hpp" />
