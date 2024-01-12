@@ -92,8 +92,8 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
 
 Simulation::Simulation() {
     CURRENT_CONTROLLED_SIMULATION = this;
-    lastX = (float)SCR_WIDTH / 2.0;
-    lastY = (float)SCR_HEIGHT / 2.0;
+    lastX = (float)SCR_WIDTH / 2.0f;
+    lastY = (float)SCR_HEIGHT / 2.0f;
     // glfw: initialize and configure
     // ------------------------------
     glfwInit();
@@ -248,13 +248,11 @@ void Simulation::startMultiThreaded() {
 }
 #endif
 
-
-
-
 void Simulation::startSingleThreaded() {
-    pm->add(std::numeric_limits<double>::infinity(), glm::vec3{ -5.0, 0.0,0.0 });
-    pm->add(1.0, glm::vec3{5.0,0.0,0.0});
-    pm->add(1000000.0, glm::vec3{ 15.0,0.0,0.0 }, vec3{-1.0, 0.0, 0.0});
+    pm->add(std::numeric_limits<double>::infinity(), Vector{ -5.0, 0.0,0.0 });
+    pm->add(1.0, Vector{5.0,0.0,0.0});
+    pm->add(1000000.0, Vector{ 15.0,0.0,0.0 }, Vector{-1.0, 0.0, 0.0});
+    
 
 #if DRAW_DEBUG_DATA_IN_WINDOW
     TextRenderer tr(SCR_WIDTH, SCR_HEIGHT);
@@ -410,31 +408,14 @@ void Simulation::startSingleThreaded() {
 }
 
 void Simulation::updateAllParticlesPositionDataInGPU(Model& particle_model, const glm::vec3 &scale ) const {
-    std::vector<glm::mat4> transformations;
-    for (const auto& p : pm->particles) {
-        glm::mat4 temp_translation = glm::mat4(1.0f);
-        temp_translation = glm::translate(temp_translation, glm::vec3{ static_cast<float>(p.pos.x), static_cast<float>(p.pos.y), static_cast<float>(p.pos.z) });
-        temp_translation = glm::scale(temp_translation, scale);
-        transformations.push_back(temp_translation);
-    }
-    particle_model.updateInstancedData(transformations);
+    pm->updateDataInGPU(particle_model, scale);
 }
 
 void Simulation::drawAllParticles(const Model &particle_model) const {
-    // configure global opengl state
-    // -----------------------------
-
-
-
     particle_model.drawInstanced(*shader);
-
-
 }
 
 void Simulation::loadDefaultParticleModel() {
     current_particle_model = new Model(1.0, 12);
     pm = new ParticleManager();
 }
-
-
-

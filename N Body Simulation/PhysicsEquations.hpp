@@ -1,21 +1,20 @@
 #pragma once
 #include <utility> // for std::pair
-#include <glm/glm.hpp>
-using vec3 = glm::highp_dvec3;
+#include "Vector.hpp"
 
-extern class Particle;
+class Particle;
 
 std::pair<double, double> solveQuadradic(double a, double b, double c);
 
-vec3 getForceGravity(const vec3& position_A, const double mass_A, const vec3& position_B, const double mass_B);
+Vector getForceGravity(const Vector& position_A, const double mass_A, const Vector& position_B, const double mass_B);
 
-vec3 getAccelerationGravity(const vec3& posA, const double massA, const vec3& posB, const double massB);
+Vector getAccelerationGravity(const Vector& posA, const double massA, const Vector& posB, const double massB);
 
-double getKineticEnergy(const double mass, const vec3& velocity);
+double getKineticEnergy(const double mass, const Vector& velocity);
 
-double getPotentialEnergy(const vec3& position_A, const double mass_A, const vec3& position_B, const double mass_B);
+double getPotentialEnergy(const Vector& position_A, const double mass_A, const Vector& position_B, const double mass_B);
 
-vec3 getForceGravityOnParticleAFromB(const Particle& A, const Particle& B);
+Vector getForceGravityOnParticleAFromB(const Particle& A, const Particle& B);
 
 double getKineticEnergy(const Particle& P);
 

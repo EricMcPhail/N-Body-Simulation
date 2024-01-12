@@ -1,20 +1,19 @@
 #pragma once
-#include <vector>
-
-extern class Model;
-extern class Shader;
-extern class Particle;
-
+#include <vector> // for std::vector
+#include <utility> // for std::pair
 #include <glm/glm.hpp>
+#include "Vector.hpp"
 
-using vec3 = glm::highp_dvec3;
+class Model;
+class Shader;
+class Particle;
 
 class ParticleManager {
-    vec3 getFutureNetForce(size_t particle_index, const double future_time, const std::vector<vec3>& future_positions, const std::vector<vec3>& future_velocities) const;
-    
-    vec3 getFutureNetAcceleration(size_t particle_index, const double future_time, const std::vector<vec3>& future_positions, const std::vector<vec3>& future_velocities) const;
+    Vector getFutureNetForce(size_t particle_index, const double future_time, const std::vector<Vector>& future_positions, const std::vector<Vector>& future_velocities) const;
 
-    void systemOfEquations(const double t, const std::vector<std::pair<vec3, vec3>>& z, std::vector<std::pair<vec3, vec3>>& dzdt) const;
+    Vector getFutureNetAcceleration(size_t particle_index, const double future_time, const std::vector<Vector>& future_positions, const std::vector<Vector>& future_velocities) const;
+
+    void systemOfEquations(const double t, const std::vector<std::pair<Vector, Vector>>& z, std::vector<std::pair<Vector, Vector>>& dzdt) const;
 
     void updateVerlet(double dt);
 
@@ -24,13 +23,11 @@ class ParticleManager {
 
     void updateSystemRK(double dt, unsigned int number_of_steps = 4);
 
-    // Runge-Kutta-Fehlberg (RK45) adaptive integration method for a system of equations
     void updateSystemRK45(double dt, size_t number_of_steps = 10, double tolerance = 1e-12);
-
 
     std::vector<Particle> particles;
     double time = 0.0;
-public: 
+public:
     friend class Simulation;
 
     double getTotalKineticEnergy() const;
@@ -39,27 +36,17 @@ public:
 
     double getTotalEnergy() const;
 
-    vec3 getNetForceOnParticle(const size_t particle_index) const;
+    Vector getNetForceOnParticle(const size_t particle_index) const;
 
-    vec3 getNetAccelerationOnParticle(const size_t particle_index) const;
+    Vector getNetAccelerationOnParticle(const size_t particle_index) const;
 
-    void add(double mass = 1.0, vec3 pos = vec3{ 0.0, 0.0, 0.0 }, vec3 vel = vec3{ 0.0, 0.0, 0.0 }, vec3 acc = vec3{ 0.0, 0.0, 0.0 });
-
-    void print();
+    void add(double mass = 1.0, Vector pos = getZeroVector(), Vector vel = getZeroVector(), Vector acc = getZeroVector());
 
     void update(double dt, size_t integration_method = 0);
 
-    void draw(Model& particle_model, Shader& shader);
+    void draw(Model& particle_model, Shader& shader, const glm::vec3& scale = { 1.0f, 1.0f, 1.0f });
 
-    void updateDataInGPU(Model& particle_model);
-
+    void updateDataInGPU(Model& particle_model, const glm::vec3& scale = { 1.0f, 1.0f, 1.0f });
 
     void updateAndResolveCollisions(double dt, const size_t integration_method = 1, const bool avoid_displacement = true);
-
-
-
 };
-
-
-
-

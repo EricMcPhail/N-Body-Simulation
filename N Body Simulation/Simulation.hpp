@@ -4,12 +4,12 @@
 #include <mutex>
 #include <glm/glm.hpp>
 
-extern class GLFWwindow;
-extern class Camera;
-extern class Shader;
-extern class Model;
-extern class ParticleManager;
-extern class ThreadPool;
+struct GLFWwindow;
+class Camera;
+class Shader;
+class Model;
+class ParticleManager;
+class ThreadPool;
 
 class Simulation {
 public:

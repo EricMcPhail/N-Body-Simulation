@@ -150,6 +150,7 @@
     <ClCompile Include="Simulation.cpp" />
     <ClCompile Include="TextRenderer.cpp" />
     <ClCompile Include="ThreadPool.cpp" />
+    <ClCompile Include="Vector.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AABB.hpp" />
@@ -166,6 +167,7 @@
     <ClInclude Include="Simulation.hpp" />
     <ClInclude Include="TextRenderer.hpp" />
     <ClInclude Include="ThreadPool.hpp" />
+    <ClInclude Include="Vector.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="fragment_shader.fs" />

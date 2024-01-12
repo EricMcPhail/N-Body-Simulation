@@ -3,8 +3,8 @@
 
 #include <glm/glm.hpp>
 
-extern class Shader;
-extern struct Vertex;
+class Shader;
+struct Vertex;
 
 
 // TODO: make this a singleton class, I fucing am so lazy

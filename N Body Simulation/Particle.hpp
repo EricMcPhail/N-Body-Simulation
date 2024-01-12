@@ -1,17 +1,12 @@
 #pragma once
 #include <glm/glm.hpp>
-#include <iostream>
+#include "Vector.hpp"
 
-using vec3 = glm::highp_dvec3;
-
-struct Particle {
+class Particle {
 public:
-    vec3 pos;
-    vec3 vel;
-    vec3 acc;
-    vec3 angle;
-    vec3 angle_vel;
-    vec3 angle_acc;
+    Vector position;
+    Vector velocity;
+    Vector acceleration;
 
     double mass = 1.0;
     double restitution = 1.0;
@@ -27,9 +22,5 @@ public:
 
     size_t collision_count = 0;
 
-
-
     Particle();
 };
-
-std::ostream& operator<<(std::ostream& out, const Particle& A);

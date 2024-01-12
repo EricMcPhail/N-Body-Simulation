@@ -5,8 +5,8 @@
 #include <glm/glm.hpp>
 #include <glad/glad.h>
 
-extern class Shader;
-extern struct Character;
+class Shader;
+struct Character;
 
 const std::string DEFAULT_FONT_PATH = "Fonts/Antonio/Antonio-Regular.ttf";
 
