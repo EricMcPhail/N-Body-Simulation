@@ -5,8 +5,6 @@
 template<size_t number_of_dimensions, typename FloatingPointType> struct Box {
 	glm::vec<number_of_dimensions, FloatingPointType> min;
 	glm::vec<number_of_dimensions, FloatingPointType> max;
-
-
 };
 
 

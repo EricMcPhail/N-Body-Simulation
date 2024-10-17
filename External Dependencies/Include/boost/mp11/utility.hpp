@@ -1,16 +1,20 @@
 #ifndef BOOST_MP11_UTILITY_HPP_INCLUDED
 #define BOOST_MP11_UTILITY_HPP_INCLUDED
 
-//  Copyright 2015, 2017 Peter Dimov.
+// Copyright 2015-2020 Peter Dimov.
 //
-//  Distributed under the Boost Software License, Version 1.0.
+// Distributed under the Boost Software License, Version 1.0.
 //
-//  See accompanying file LICENSE_1_0.txt or copy at
-//  http://www.boost.org/LICENSE_1_0.txt
+// See accompanying file LICENSE_1_0.txt or copy at
+// http://www.boost.org/LICENSE_1_0.txt
 
 #include <boost/mp11/integral.hpp>
-#include <boost/config.hpp>
-#include <boost/detail/workaround.hpp>
+#include <boost/mp11/detail/mp_list.hpp>
+#include <boost/mp11/detail/mp_fold.hpp>
+#include <boost/mp11/detail/mp_front.hpp>
+#include <boost/mp11/detail/mp_rename.hpp>
+#include <boost/mp11/detail/mp_defer.hpp>
+#include <boost/mp11/detail/config.hpp>
 
 namespace boost
 {
@@ -30,61 +34,9 @@ template<class T> using mp_identity_t = typename mp_identity<T>::type;
 template<class... T> struct mp_inherit: T... {};
 
 // mp_if, mp_if_c
-namespace detail
-{
-
-template<bool C, class T, class... E> struct mp_if_c_impl
-{
-};
-
-template<class T, class... E> struct mp_if_c_impl<true, T, E...>
-{
-    using type = T;
-};
-
-template<class T, class E> struct mp_if_c_impl<false, T, E>
-{
-    using type = E;
-};
-
-} // namespace detail
-
-template<bool C, class T, class... E> using mp_if_c = typename detail::mp_if_c_impl<C, T, E...>::type;
-template<class C, class T, class... E> using mp_if = typename detail::mp_if_c_impl<static_cast<bool>(C::value), T, E...>::type;
-
 // mp_valid
-// implementation by Bruno Dutra (by the name is_evaluable)
-namespace detail
-{
-
-template<template<class...> class F, class... T> struct mp_valid_impl
-{
-    template<template<class...> class G, class = G<T...>> static mp_true check(int);
-    template<template<class...> class> static mp_false check(...);
-
-    using type = decltype(check<F>(0));
-};
-
-} // namespace detail
-
-template<template<class...> class F, class... T> using mp_valid = typename detail::mp_valid_impl<F, T...>::type;
-
 // mp_defer
-namespace detail
-{
-
-template<template<class...> class F, class... T> struct mp_defer_impl
-{
-    using type = F<T...>;
-};
-
-struct mp_no_type
-{
-};
-
-} // namespace detail
-
-template<template<class...> class F, class... T> using mp_defer = mp_if<mp_valid<F, T...>, detail::mp_defer_impl<F, T...>, detail::mp_no_type>;
+//   moved to detail/mp_defer.hpp
 
 // mp_eval_if, mp_eval_if_c
 namespace detail
@@ -106,6 +58,18 @@ template<class T, template<class...> class F, class... U> struct mp_eval_if_c_im
 template<bool C, class T, template<class...> class F, class... U> using mp_eval_if_c = typename detail::mp_eval_if_c_impl<C, T, F, U...>::type;
 template<class C, class T, template<class...> class F, class... U> using mp_eval_if = typename detail::mp_eval_if_c_impl<static_cast<bool>(C::value), T, F, U...>::type;
 template<class C, class T, class Q, class... U> using mp_eval_if_q = typename detail::mp_eval_if_c_impl<static_cast<bool>(C::value), T, Q::template fn, U...>::type;
+
+// mp_eval_if_not
+template<class C, class T, template<class...> class F, class... U> using mp_eval_if_not = mp_eval_if<mp_not<C>, T, F, U...>;
+template<class C, class T, class Q, class... U> using mp_eval_if_not_q = mp_eval_if<mp_not<C>, T, Q::template fn, U...>;
+
+// mp_eval_or
+template<class T, template<class...> class F, class... U> using mp_eval_or = mp_eval_if_not<mp_valid<F, U...>, T, F, U...>;
+template<class T, class Q, class... U> using mp_eval_or_q = mp_eval_or<T, Q::template fn, U...>;
+
+// mp_valid_and_true
+template<template<class...> class F, class... T> using mp_valid_and_true = mp_eval_or<mp_false, F, T...>;
+template<class Q, class... T> using mp_valid_and_true_q = mp_valid_and_true<Q::template fn, T...>;
 
 // mp_cond
 
@@ -147,27 +111,57 @@ template<template<class...> class F> struct mp_quote_trait
     template<class... T> using fn = typename F<T...>::type;
 };
 
-// mp_invoke
-#if BOOST_WORKAROUND( BOOST_MSVC, < 1900 )
+// mp_invoke_q
+#if BOOST_MP11_WORKAROUND( BOOST_MP11_MSVC, < 1900 )
 
 namespace detail
 {
 
-template<class Q, class... T> struct mp_invoke_impl: mp_defer<Q::template fn, T...> {};
+template<class Q, class... T> struct mp_invoke_q_impl: mp_defer<Q::template fn, T...> {};
 
 } // namespace detail
 
-template<class Q, class... T> using mp_invoke = typename detail::mp_invoke_impl<Q, T...>::type;
+template<class Q, class... T> using mp_invoke_q = typename detail::mp_invoke_q_impl<Q, T...>::type;
 
-#elif BOOST_WORKAROUND( BOOST_GCC, < 50000 )
+#elif BOOST_MP11_WORKAROUND( BOOST_MP11_GCC, < 50000 )
 
-template<class Q, class... T> using mp_invoke = typename mp_defer<Q::template fn, T...>::type;
+template<class Q, class... T> using mp_invoke_q = typename mp_defer<Q::template fn, T...>::type;
 
 #else
 
-template<class Q, class... T> using mp_invoke = typename Q::template fn<T...>;
+template<class Q, class... T> using mp_invoke_q = typename Q::template fn<T...>;
 
 #endif
+
+// mp_not_fn<P>
+template<template<class...> class P> struct mp_not_fn
+{
+    template<class... T> using fn = mp_not< mp_invoke_q<mp_quote<P>, T...> >;
+};
+
+template<class Q> using mp_not_fn_q = mp_not_fn<Q::template fn>;
+
+// mp_compose
+namespace detail
+{
+
+template<class L, class Q> using mp_compose_helper = mp_list< mp_apply_q<Q, L> >;
+
+} // namespace detail
+
+#if !BOOST_MP11_WORKAROUND( BOOST_MP11_MSVC, < 1900 )
+
+template<template<class...> class... F> struct mp_compose
+{
+    template<class... T> using fn = mp_front< mp_fold<mp_list<mp_quote<F>...>, mp_list<T...>, detail::mp_compose_helper> >;
+};
+
+#endif
+
+template<class... Q> struct mp_compose_q
+{
+    template<class... T> using fn = mp_front< mp_fold<mp_list<Q...>, mp_list<T...>, detail::mp_compose_helper> >;
+};
 
 } // namespace mp11
 } // namespace boost

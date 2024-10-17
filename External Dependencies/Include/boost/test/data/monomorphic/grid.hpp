@@ -22,6 +22,7 @@
 #include <boost/test/data/monomorphic/fwd.hpp>
 #include <boost/test/data/monomorphic/sample_merge.hpp>
 
+#include <boost/core/enable_if.hpp>
 #include <boost/mpl/identity.hpp>
 
 #include <boost/test/detail/suppress_warnings.hpp>
@@ -55,7 +56,7 @@ public:
         // Constructor
         explicit    iterator( dataset1_iter iter1, DataSet2 const& ds2 )
         : m_iter1( std::move( iter1 ) )
-        , m_iter2( std::move( ds2.begin() ) )
+        , m_iter2( ds2.begin() )
         , m_ds2( &ds2 )
         , m_ds2_pos( 0 )
         {}
@@ -89,7 +90,7 @@ public:
     };
 
 public:
-    enum { arity = boost::decay<DataSet1>::type::arity + boost::decay<DataSet2>::type::arity };
+    static const int arity = boost::decay<DataSet1>::type::arity + boost::decay<DataSet2>::type::arity;
 
     //! Constructor
     grid( DataSet1&& ds1, DataSet2&& ds2 )
@@ -104,7 +105,10 @@ public:
     {}
 
     // dataset interface
-    data::size_t    size() const    { return m_ds1.size() * m_ds2.size(); }
+    data::size_t    size() const    {
+      BOOST_TEST_DS_ASSERT( !m_ds1.size().is_inf() && !m_ds2.size().is_inf(), "Grid axes can't have infinite size" );
+      return m_ds1.size() * m_ds2.size();
+    }
     iterator        begin() const   { return iterator( m_ds1.begin(), m_ds2 ); }
 
 private:
@@ -140,8 +144,6 @@ inline typename boost::lazy_enable_if_c<is_dataset<DataSet1>::value && is_datase
 >::type
 operator*( DataSet1&& ds1, DataSet2&& ds2 )
 {
-    BOOST_TEST_DS_ASSERT( !ds1.size().is_inf() && !ds2.size().is_inf(), "Grid axes can't have infinite size" );
-
     return grid<DataSet1,DataSet2>( std::forward<DataSet1>( ds1 ),  std::forward<DataSet2>( ds2 ) );
 }
 

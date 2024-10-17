@@ -1,6 +1,12 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
 
 // Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+// Copyright (c) 2017 Adam Wulkiewicz, Lodz, Poland.
+
+// This file was modified by Oracle on 2017-2020.
+// Modifications copyright (c) 2017-2020, Oracle and/or its affiliates.
+
+// Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
 
 // Use, modification and distribution is subject to the Boost Software License,
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
@@ -9,9 +15,13 @@
 #ifndef BOOST_GEOMETRY_ALGORITHMS_DETAIL_OVERLAY_ADD_RINGS_HPP
 #define BOOST_GEOMETRY_ALGORITHMS_DETAIL_OVERLAY_ADD_RINGS_HPP
 
-#include <boost/range.hpp>
+#include <boost/range/begin.hpp>
+#include <boost/range/end.hpp>
+#include <boost/range/value_type.hpp>
+#include <boost/throw_exception.hpp>
 
 #include <boost/geometry/core/closure.hpp>
+#include <boost/geometry/core/exception.hpp>
 #include <boost/geometry/algorithms/area.hpp>
 #include <boost/geometry/algorithms/detail/overlay/convert_ring.hpp>
 #include <boost/geometry/algorithms/detail/overlay/get_ring.hpp>
@@ -77,19 +87,15 @@ template
     typename Geometry2,
     typename RingCollection,
     typename OutputIterator,
-    typename AreaStrategy
+    typename Strategy
 >
 inline OutputIterator add_rings(SelectionMap const& map,
             Geometry1 const& geometry1, Geometry2 const& geometry2,
             RingCollection const& collection,
             OutputIterator out,
-            AreaStrategy const& area_strategy,
+            Strategy const& strategy,
             add_rings_error_handling error_handling = add_rings_ignore_unordered)
 {
-    typedef typename SelectionMap::const_iterator iterator;
-    typedef typename AreaStrategy::return_type area_type;
-
-    area_type const zero = 0;
     std::size_t const min_num_points = core_detail::closure::minimum_ring_size
         <
             geometry::closure
@@ -102,29 +108,23 @@ inline OutputIterator add_rings(SelectionMap const& map,
         >::value;
 
 
-    for (iterator it = boost::begin(map);
-        it != boost::end(map);
-        ++it)
+    for (auto const& pair : map)
     {
-        if (! it->second.discarded
-            && it->second.parent.source_index == -1)
+        if (! pair.second.discarded
+            && pair.second.parent.source_index == -1)
         {
             GeometryOut result;
             convert_and_add(result, geometry1, geometry2, collection,
-                    it->first, it->second.reversed, false);
+                    pair.first, pair.second.reversed, false);
 
             // Add children
-            for (typename std::vector<ring_identifier>::const_iterator child_it
-                        = it->second.children.begin();
-                child_it != it->second.children.end();
-                ++child_it)
+            for (auto const& child : pair.second.children)
             {
-                iterator mit = map.find(*child_it);
-                if (mit != map.end()
-                    && ! mit->second.discarded)
+                auto mit = map.find(child);
+                if (mit != map.end() && ! mit->second.discarded)
                 {
                     convert_and_add(result, geometry1, geometry2, collection,
-                            *child_it, mit->second.reversed, true);
+                            child, mit->second.reversed, true);
                 }
             }
 
@@ -133,7 +133,9 @@ inline OutputIterator add_rings(SelectionMap const& map,
             // everything is figured out yet (sum of positive/negative rings)
             if (geometry::num_points(result) >= min_num_points)
             {
-                area_type const area = geometry::area(result, area_strategy);
+                typedef typename geometry::area_result<GeometryOut, Strategy>::type area_type;
+                area_type const area = geometry::area(result, strategy);
+                area_type const zero = 0;
                 // Ignore if area is 0
                 if (! math::equals(area, zero))
                 {
@@ -161,16 +163,16 @@ template
     typename Geometry,
     typename RingCollection,
     typename OutputIterator,
-    typename AreaStrategy
+    typename Strategy
 >
 inline OutputIterator add_rings(SelectionMap const& map,
             Geometry const& geometry,
             RingCollection const& collection,
             OutputIterator out,
-            AreaStrategy const& area_strategy)
+            Strategy const& strategy)
 {
     Geometry empty;
-    return add_rings<GeometryOut>(map, geometry, empty, collection, out, area_strategy);
+    return add_rings<GeometryOut>(map, geometry, empty, collection, out, strategy);
 }
 
 

@@ -1,3 +1,4 @@
+#if 0 
 #include "Model.hpp"
 #include "Shader.hpp"
 #include "Constants.hpp" // needed for pi
@@ -139,3 +140,4 @@ void Model::updateAndDrawInstanced(const std::vector<glm::mat4>& transformations
     updateInstancedData(transformations);
     drawInstanced(shader);
 }
+#endif 

@@ -60,7 +60,7 @@ public:
     explicit child(child_handle &&ch, const std::shared_ptr<std::atomic<int>> &ptr) : _child_handle(std::move(ch)), _exit_status(ptr) {}
     explicit child(child_handle &&ch) : _child_handle(std::move(ch)) {}
 
-    explicit child(pid_t & pid) : _child_handle(pid), _attached(false) {};
+    explicit child(pid_t pid) : _child_handle(pid), _attached(false) {};
     child(const child&) = delete;
     child(child && lhs) noexcept
         : _child_handle(std::move(lhs._child_handle)),
@@ -73,7 +73,7 @@ public:
 
     template<typename ...Args>
     explicit child(Args&&...args);
-    child() {}
+    child() { } // Must be kept non defaulted for MSVC 14.1 & 14.2 #113
     child& operator=(const child&) = delete;
     child& operator=(child && lhs)
     {
@@ -101,74 +101,62 @@ public:
     int exit_code() const {return ::boost::process::detail::api::eval_exit_status(_exit_status->load());}
     pid_t id()      const {return _child_handle.id(); }
 
+    int native_exit_code() const {return _exit_status->load();}
+
     bool running()
     {
-        if (valid() && !_exited())
-        {
-            int code = -1;
-            auto res = boost::process::detail::api::is_running(_child_handle, code);
-            if (!res && !_exited())
-                _exit_status->store(code);
-
-            return res;
-        }
-        return false;
+        std::error_code ec;
+        bool b = running(ec);
+        boost::process::detail::throw_error(ec, "running error");
+        return b;
     }
 
     void terminate()
     {
-        if (valid() && running())
-            boost::process::detail::api::terminate(_child_handle);
-
-        _terminated = true;
+        std::error_code ec;
+        terminate(ec);
+        boost::process::detail::throw_error(ec, "terminate error");
     }
 
     void wait()
     {
-        if (!_exited() && valid())
-        {
-            int exit_code = 0;
-            boost::process::detail::api::wait(_child_handle, exit_code);
-            _exit_status->store(exit_code);
-        }
+        std::error_code ec;
+        wait(ec);
+        boost::process::detail::throw_error(ec, "wait error");
     }
 
+#if !defined(BOOST_PROCESS_NO_DEPRECATED)
+
     template< class Rep, class Period >
-    bool wait_for  (const std::chrono::duration<Rep, Period>& rel_time)
+    BOOST_DEPRECATED("wait_for is unreliable")
+    bool wait_for (const std::chrono::duration<Rep, Period>& rel_time)
     {
-        if (!_exited())
-        {
-            int exit_code = 0;
-            auto b = boost::process::detail::api::wait_for(_child_handle, exit_code, rel_time);
-            if (!b)
-                return false;
-            _exit_status->store(exit_code);
-        }
-        return true;
+        std::error_code ec;
+        bool b = wait_for(rel_time, ec);
+        boost::process::detail::throw_error(ec, "wait_for error");
+        return b;
     }
 
     template< class Clock, class Duration >
+    BOOST_DEPRECATED("wait_until is unreliable")
     bool wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time )
     {
-        if (!_exited())
-        {
-            int exit_code = 0;
-            auto b = boost::process::detail::api::wait_until(_child_handle, exit_code, timeout_time);
-            if (!b)
-                return false;
-            _exit_status->store(exit_code);
-        }
-        return true;
+        std::error_code ec;
+        bool b = wait_until(timeout_time, ec);
+        boost::process::detail::throw_error(ec, "wait_until error");
+        return b;
     }
+#endif
 
     bool running(std::error_code & ec) noexcept
     {
-        if (valid() && !_exited())
+        ec.clear();
+        if (valid() && !_exited() && !ec)
         {
-            int code;
-            auto res = boost::process::detail::api::is_running(_child_handle, code, ec);
-            if (!res && !_exited())
-                _exit_status->store(code);
+            int exit_code = 0;
+            auto res = boost::process::detail::api::is_running(_child_handle, exit_code, ec);
+            if (!ec && !res && !_exited())
+                _exit_status->store(exit_code);
 
             return res;
         }
@@ -177,10 +165,11 @@ public:
 
     void terminate(std::error_code & ec) noexcept
     {
-        if (valid() && running(ec))
+        if (valid() && running(ec) && !ec)
             boost::process::detail::api::terminate(_child_handle, ec);
 
-        _terminated = true;
+        if (!ec)
+            _terminated = true;
     }
 
     void wait(std::error_code & ec) noexcept
@@ -189,38 +178,34 @@ public:
         {
             int exit_code = 0;
             boost::process::detail::api::wait(_child_handle, exit_code, ec);
-            _exit_status->store(exit_code);
+            if (!ec)
+                _exit_status->store(exit_code);
         }
     }
 
+#if !defined(BOOST_PROCESS_NO_DEPRECATED)
     template< class Rep, class Period >
-    bool wait_for  (const std::chrono::duration<Rep, Period>& rel_time, std::error_code & ec) noexcept
+    BOOST_DEPRECATED("wait_for is unreliable")
+    bool wait_for (const std::chrono::duration<Rep, Period>& rel_time, std::error_code & ec) noexcept
     {
-        if (!_exited())
-        {
-            int exit_code = 0;
-            auto b = boost::process::detail::api::wait_for(_child_handle, exit_code, rel_time, ec);
-            if (!b)
-                return false;
-            _exit_status->store(exit_code);
-        }
-        return true;
+        return wait_until(std::chrono::steady_clock::now() + rel_time, ec);
     }
 
     template< class Clock, class Duration >
+    BOOST_DEPRECATED("wait_until is unreliable")
     bool wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time, std::error_code & ec) noexcept
     {
         if (!_exited())
         {
             int exit_code = 0;
             auto b = boost::process::detail::api::wait_until(_child_handle, exit_code, timeout_time, ec);
-            if (!b)
+            if (!b || ec)
                 return false;
             _exit_status->store(exit_code);
         }
         return true;
     }
-
+#endif
 
     bool valid() const
     {

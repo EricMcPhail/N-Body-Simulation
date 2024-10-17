@@ -2,7 +2,7 @@
 // detail/win_iocp_socket_recvfrom_op.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2017 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2023 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -23,7 +23,7 @@
 #include <boost/asio/detail/buffer_sequence_adapter.hpp>
 #include <boost/asio/detail/fenced_block.hpp>
 #include <boost/asio/detail/handler_alloc_helpers.hpp>
-#include <boost/asio/detail/handler_invoke_helpers.hpp>
+#include <boost/asio/detail/handler_work.hpp>
 #include <boost/asio/detail/memory.hpp>
 #include <boost/asio/detail/operation.hpp>
 #include <boost/asio/detail/socket_ops.hpp>
@@ -35,7 +35,8 @@ namespace boost {
 namespace asio {
 namespace detail {
 
-template <typename MutableBufferSequence, typename Endpoint, typename Handler>
+template <typename MutableBufferSequence, typename Endpoint,
+    typename Handler, typename IoExecutor>
 class win_iocp_socket_recvfrom_op : public operation
 {
 public:
@@ -43,15 +44,16 @@ public:
 
   win_iocp_socket_recvfrom_op(Endpoint& endpoint,
       socket_ops::weak_cancel_token_type cancel_token,
-      const MutableBufferSequence& buffers, Handler& handler)
+      const MutableBufferSequence& buffers, Handler& handler,
+      const IoExecutor& io_ex)
     : operation(&win_iocp_socket_recvfrom_op::do_complete),
       endpoint_(endpoint),
       endpoint_size_(static_cast<int>(endpoint.capacity())),
       cancel_token_(cancel_token),
       buffers_(buffers),
-      handler_(BOOST_ASIO_MOVE_CAST(Handler)(handler))
+      handler_(static_cast<Handler&&>(handler)),
+      work_(handler_, io_ex)
   {
-    handler_work<Handler>::start(handler_);
   }
 
   int& endpoint_size()
@@ -66,12 +68,17 @@ public:
     boost::system::error_code ec(result_ec);
 
     // Take ownership of the operation object.
+    BOOST_ASIO_ASSUME(base != 0);
     win_iocp_socket_recvfrom_op* o(
         static_cast<win_iocp_socket_recvfrom_op*>(base));
     ptr p = { boost::asio::detail::addressof(o->handler_), o, o };
-    handler_work<Handler> w(o->handler_);
 
     BOOST_ASIO_HANDLER_COMPLETION((*o));
+
+    // Take ownership of the operation's outstanding work.
+    handler_work<Handler, IoExecutor> w(
+        static_cast<handler_work<Handler, IoExecutor>&&>(
+          o->work_));
 
 #if defined(BOOST_ASIO_ENABLE_BUFFER_DEBUGGING)
     // Check whether buffers are still valid.
@@ -86,6 +93,8 @@ public:
 
     // Record the size of the endpoint returned by the operation.
     o->endpoint_.resize(o->endpoint_size_);
+
+    BOOST_ASIO_ERROR_LOCATION(ec);
 
     // Make a copy of the handler so that the memory can be deallocated before
     // the upcall is made. Even if we're not about to make an upcall, a
@@ -114,6 +123,7 @@ private:
   socket_ops::weak_cancel_token_type cancel_token_;
   MutableBufferSequence buffers_;
   Handler handler_;
+  handler_work<Handler, IoExecutor> work_;
 };
 
 } // namespace detail

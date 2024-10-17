@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2016-2017 Vinnie Falco (vinnie dot falco at gmail dot com)
+// Copyright (c) 2016-2019 Vinnie Falco (vinnie dot falco at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -11,11 +11,11 @@
 #define BOOST_BEAST_HTTP_FIELDS_HPP
 
 #include <boost/beast/core/detail/config.hpp>
-#include <boost/beast/core/string_param.hpp>
 #include <boost/beast/core/string.hpp>
 #include <boost/beast/core/detail/allocator.hpp>
 #include <boost/beast/http/field.hpp>
 #include <boost/asio/buffer.hpp>
+#include <boost/core/empty_value.hpp>
 #include <boost/intrusive/list.hpp>
 #include <boost/intrusive/set.hpp>
 #include <boost/optional.hpp>
@@ -44,17 +44,26 @@ namespace http {
     is iterated the fields are presented in the order of insertion, with
     fields having the same name following each other consecutively.
 
-    Meets the requirements of @b Fields
+    Meets the requirements of <em>Fields</em>
 
-    @tparam Allocator The allocator to use. This must meet the
-    requirements of @b Allocator.
+    @tparam Allocator The allocator to use.
 */
 template<class Allocator>
 class basic_fields
+#if ! BOOST_BEAST_DOXYGEN
+    : private boost::empty_value<Allocator>
+#endif
 {
-    friend class fields_test; // for `header`
+    // Fancy pointers are not supported
+    static_assert(std::is_pointer<typename
+        std::allocator_traits<Allocator>::pointer>::value,
+        "Allocator must use regular pointers");
 
-    static std::size_t constexpr max_static_buffer = 4096;
+#ifndef BOOST_BEAST_DOXYGEN
+    friend class fields_test; // for `header`
+#endif
+
+    struct element;
 
     using off_t = std::uint16_t;
 
@@ -62,28 +71,26 @@ public:
     /// The type of allocator used.
     using allocator_type = Allocator;
 
-    /// The type of element used to represent a field 
+    /// The type of element used to represent a field
     class value_type
     {
+#ifndef BOOST_BEAST_DOXYGEN
         friend class basic_fields;
+#endif
 
-        boost::asio::const_buffer
-        buffer() const;
-
-        value_type(field name,
-            string_view sname, string_view value);
-
-        boost::intrusive::list_member_hook<
-            boost::intrusive::link_mode<
-                boost::intrusive::normal_link>>
-                    list_hook_;
-        boost::intrusive::set_member_hook<
-            boost::intrusive::link_mode<
-                boost::intrusive::normal_link>>
-                    set_hook_;
         off_t off_;
         off_t len_;
         field f_;
+
+        char*
+        data() const;
+
+        net::const_buffer
+        buffer() const;
+
+    protected:
+        value_type(field name,
+            string_view sname, string_view value);
 
     public:
         /// Constructor (deleted)
@@ -92,8 +99,8 @@ public:
         /// Assignment (deleted)
         value_type& operator=(value_type const&) = delete;
 
-        /// Returns the field enum, which can be @ref field::unknown
-        field const
+        /// Returns the field enum, which can be @ref boost::beast::http::field::unknown
+        field
         name() const;
 
         /// Returns the field name as a string
@@ -109,13 +116,16 @@ public:
 
         The case-comparison operation is defined only for low-ASCII characters.
     */
+#if BOOST_BEAST_DOXYGEN
+    using key_compare = __implementation_defined__;
+#else
     struct key_compare : beast::iless
+#endif
     {
         /// Returns `true` if lhs is less than rhs using a strict ordering
-        template<class String>
         bool
         operator()(
-            String const& lhs,
+            string_view lhs,
             value_type const& rhs) const noexcept
         {
             if(lhs.size() < rhs.name_string().size())
@@ -126,11 +136,10 @@ public:
         }
 
         /// Returns `true` if lhs is less than rhs using a strict ordering
-        template<class String>
         bool
         operator()(
             value_type const& lhs,
-            String const& rhs) const noexcept
+            string_view rhs) const noexcept
         {
             if(lhs.name_string().size() < rhs.size())
                 return true;
@@ -155,29 +164,48 @@ public:
 
     /// The algorithm used to serialize the header
 #if BOOST_BEAST_DOXYGEN
-    using writer = implementation_defined;
+    using writer = __implementation_defined__;
 #else
     class writer;
 #endif
 
 private:
+    struct element
+        : public boost::intrusive::list_base_hook<
+            boost::intrusive::link_mode<
+                boost::intrusive::normal_link>>
+        , public boost::intrusive::set_base_hook<
+            boost::intrusive::link_mode<
+                boost::intrusive::normal_link>>
+        , public value_type
+    {
+        element(field name,
+            string_view sname, string_view value);
+    };
+
     using list_t = typename boost::intrusive::make_list<
-        value_type, boost::intrusive::member_hook<
-            value_type, boost::intrusive::list_member_hook<
-                boost::intrusive::link_mode<
-                    boost::intrusive::normal_link>>,
-                        &value_type::list_hook_>,
-                            boost::intrusive::constant_time_size<
-                                false>>::type;
+        element,
+        boost::intrusive::constant_time_size<false>
+            >::type;
 
     using set_t = typename boost::intrusive::make_multiset<
-        value_type, boost::intrusive::member_hook<value_type,
-            boost::intrusive::set_member_hook<
-                boost::intrusive::link_mode<
-                    boost::intrusive::normal_link>>,
-                        &value_type::set_hook_>,
-                            boost::intrusive::constant_time_size<true>,
-                                boost::intrusive::compare<key_compare>>::type;
+        element,
+        boost::intrusive::constant_time_size<false>,
+        boost::intrusive::compare<key_compare>
+            >::type;
+
+    using align_type = typename
+        boost::type_with_alignment<alignof(element)>::type;
+
+    using rebind_type = typename
+        beast::detail::allocator_traits<Allocator>::
+            template rebind_alloc<align_type>;
+
+    using alloc_traits =
+        beast::detail::allocator_traits<rebind_type>;
+
+    using size_type = typename
+        beast::detail::allocator_traits<Allocator>::size_type;
 
 
 public:
@@ -192,14 +220,14 @@ public:
         @param alloc The allocator to use.
     */
     explicit
-    basic_fields(Allocator const& alloc);
+    basic_fields(Allocator const& alloc) noexcept;
 
     /** Move constructor.
 
         The state of the moved-from object is
         as if constructed using the same allocator.
     */
-    basic_fields(basic_fields&&);
+    basic_fields(basic_fields&&) noexcept;
 
     /** Move constructor.
 
@@ -236,7 +264,8 @@ public:
         The state of the moved-from object is
         as if constructed using the same allocator.
     */
-    basic_fields& operator=(basic_fields&&);
+    basic_fields& operator=(basic_fields&&) noexcept(
+        alloc_traits::propagate_on_container_move_assignment::value);
 
     /// Copy assignment.
     basic_fields& operator=(basic_fields const&);
@@ -248,7 +277,7 @@ public:
 public:
     /// A constant iterator to the field sequence.
 #if BOOST_BEAST_DOXYGEN
-    using const_iterator = implementation_defined;
+    using const_iterator = __implementation_defined__;
 #else
     using const_iterator = typename list_t::const_iterator;
 #endif
@@ -260,7 +289,7 @@ public:
     allocator_type
     get_allocator() const
     {
-        return alloc_;
+        return this->get();
     }
 
     //--------------------------------------------------------------------------
@@ -288,7 +317,7 @@ public:
         If more than one field with the specified name exists, the
         first field defined by insertion order is returned.
 
-        @param name The name of the field.
+        @param name The name of the field. It is interpreted as a case-insensitive string.
 
         @return The field value.
 
@@ -312,7 +341,7 @@ public:
         If more than one field with the specified name exists, the
         first field defined by insertion order is returned.
 
-        @param name The name of the field.
+        @param name The name of the field. It is interpreted as a case-insensitive string.
     */
     string_view const
     operator[](string_view name) const;
@@ -392,32 +421,45 @@ public:
         If one or more fields with the same name already exist,
         the new field will be inserted after the last field with
         the matching name, in serialization order.
+        The value can be an empty string.
 
         @param name The field name.
 
-        @param value The value of the field, as a @ref string_param
+        @param value The value of the field, as a @ref boost::beast::string_view
     */
     void
-    insert(field name, string_param const& value);
+    insert(field name, string_view const& value);
+
+    /* Set a field from a null pointer (deleted).
+    */
+    void
+    insert(field, std::nullptr_t) = delete;
 
     /** Insert a field.
 
         If one or more fields with the same name already exist,
         the new field will be inserted after the last field with
         the matching name, in serialization order.
+        The value can be an empty string.
 
-        @param name The field name.
+        @param name The field name. It is interpreted as a case-insensitive string.
 
-        @param value The value of the field, as a @ref string_param
+        @param value The value of the field, as a @ref boost::beast::string_view
     */
     void
-    insert(string_view name, string_param const& value);
+    insert(string_view name, string_view const& value);
+
+    /* Insert a field from a null pointer (deleted).
+    */
+    void
+    insert(string_view, std::nullptr_t) = delete;
 
     /** Insert a field.
 
         If one or more fields with the same name already exist,
         the new field will be inserted after the last field with
         the matching name, in serialization order.
+        The value can be an empty string.
 
         @param name The field name.
 
@@ -426,39 +468,49 @@ public:
         must be equal to `to_string(name)` using a case-insensitive
         comparison, otherwise the behavior is undefined.
 
-        @param value The value of the field, as a @ref string_param
+        @param value The value of the field, as a @ref boost::beast::string_view
     */
     void
     insert(field name, string_view name_string,
-        string_param const& value);
+           string_view const& value);
+
+    void
+    insert(field, string_view, std::nullptr_t) = delete;
 
     /** Set a field value, removing any other instances of that field.
 
         First removes any values with matching field names, then
-        inserts the new field value.
+        inserts the new field value. The value may be an empty string.
 
         @param name The field name.
 
-        @param value The value of the field, as a @ref string_param
+        @param value The value of the field, as a @ref boost::beast::string_view
 
         @return The field value.
+
     */
     void
-    set(field name, string_param const& value);
+    set(field name, string_view const& value);
+
+    void
+    set(field, std::nullptr_t) = delete;
 
     /** Set a field value, removing any other instances of that field.
 
         First removes any values with matching field names, then
-        inserts the new field value.
+        inserts the new field value. The value can be an empty string.
 
-        @param name The field name.
+        @param name The field name. It is interpreted as a case-insensitive string.
 
-        @param value The value of the field, as a @ref string_param
+        @param value The value of the field, as a @ref boost::beast::string_view
     */
     void
-    set(string_view name, string_param const& value);
+    set(string_view name, string_view const& value);
 
-    /** Remove a field.
+    void
+    set(string_view, std::nullptr_t) = delete;
+
+        /** Remove a field.
 
         References and iterators to the erased elements are
         invalidated. Other references and iterators are not
@@ -496,7 +548,7 @@ public:
         invalidated. Other references and iterators are not
         affected.
 
-        @param name The field name.
+        @param name The field name. It is interpreted as a case-insensitive string.
 
         @return The number of fields removed.
     */
@@ -538,7 +590,7 @@ public:
 
     /** Return the number of fields with the specified name.
 
-        @param name The field name.
+        @param name The field name. It is interpreted as a case-insensitive string.
     */
     std::size_t
     count(string_view name) const;
@@ -561,7 +613,7 @@ public:
         If more than one field with the specified name exists, the
         first field defined by insertion order is returned.
 
-        @param name The field name.
+        @param name The field name. It is interpreted as a case-insensitive string.
 
         @return An iterator to the matching field, or `end()` if
         no match was found.
@@ -571,6 +623,14 @@ public:
 
     /** Returns a range of iterators to the fields with the specified name.
 
+        This function returns the first and last iterators to the ordered
+        fields with the specified name.
+
+        @note The fields represented by the range are ordered. Its elements
+        are guaranteed to match the field ordering of the message. This
+        means users do not need to sort this range when comparing fields
+        of the same name in different messages.
+
         @param name The field name.
 
         @return A range of iterators to fields with the same name,
@@ -579,13 +639,7 @@ public:
     std::pair<const_iterator, const_iterator>
     equal_range(field name) const;
 
-    /** Returns a range of iterators to the fields with the specified name.
-
-        @param name The field name.
-
-        @return A range of iterators to fields with the same name,
-        otherwise an empty range.
-    */
+    /// @copydoc boost::beast::http::basic_fields::equal_range(boost::beast::http::field) const
     std::pair<const_iterator, const_iterator>
     equal_range(string_view name) const;
 
@@ -681,25 +735,15 @@ private:
     template<class OtherAlloc>
     friend class basic_fields;
 
-    using base_alloc_type = typename
-        beast::detail::allocator_traits<Allocator>::
-            template rebind_alloc<value_type>;
-
-    using alloc_traits =
-        beast::detail::allocator_traits<base_alloc_type>;
-
-    using size_type = typename
-        beast::detail::allocator_traits<Allocator>::size_type;
-
-    value_type&
+    element&
     new_element(field name,
         string_view sname, string_view value);
 
     void
-    delete_element(value_type& e);
+    delete_element(element& e);
 
     void
-    set_element(value_type& e);
+    set_element(element& e);
 
     void
     realloc_string(string_view& dest, string_view s);
@@ -736,7 +780,6 @@ private:
     void
     swap(basic_fields& other, std::false_type);
 
-    base_alloc_type alloc_;
     set_t set_;
     list_t list_;
     string_view method_;
@@ -750,6 +793,6 @@ using fields = basic_fields<std::allocator<char>>;
 } // beast
 } // boost
 
-#include <boost/beast/http/impl/fields.ipp>
+#include <boost/beast/http/impl/fields.hpp>
 
 #endif

@@ -2,7 +2,7 @@
 // ip/impl/network_v4.ipp
 // ~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2017 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2023 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 // Copyright (c) 2014 Oliver Kowalke (oliver dot kowalke at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
@@ -92,7 +92,7 @@ network_v4::network_v4(const address_v4& addr, const address_v4& mask)
   }
 }
 
-address_v4 network_v4::netmask() const BOOST_ASIO_NOEXCEPT
+address_v4 network_v4::netmask() const noexcept
 {
   uint32_t nmbits = 0xffffffff;
   if (prefix_length_ == 0)
@@ -102,7 +102,7 @@ address_v4 network_v4::netmask() const BOOST_ASIO_NOEXCEPT
   return address_v4(nmbits);
 }
 
-address_v4_range network_v4::hosts() const BOOST_ASIO_NOEXCEPT
+address_v4_range network_v4::hosts() const noexcept
 {
   return is_host()
     ? address_v4_range(address_, address_v4(address_.to_uint() + 1))
@@ -127,9 +127,12 @@ std::string network_v4::to_string() const
 
 std::string network_v4::to_string(boost::system::error_code& ec) const
 {
+  using namespace std; // For sprintf.
   ec = boost::system::error_code();
   char prefix_len[16];
-#if defined(BOOST_ASIO_HAS_SECURE_RTL)
+#if defined(BOOST_ASIO_HAS_SNPRINTF)
+  snprintf(prefix_len, sizeof(prefix_len), "/%u", prefix_length_);
+#elif defined(BOOST_ASIO_HAS_SECURE_RTL)
   sprintf_s(prefix_len, sizeof(prefix_len), "/%u", prefix_length_);
 #else // defined(BOOST_ASIO_HAS_SECURE_RTL)
   sprintf(prefix_len, "/%u", prefix_length_);
@@ -193,7 +196,7 @@ network_v4 make_network_v4(const std::string& str,
   return network_v4(addr, static_cast<unsigned short>(prefix_len));
 }
 
-#if defined(BOOST_ASIO_HAS_STD_STRING_VIEW)
+#if defined(BOOST_ASIO_HAS_STRING_VIEW)
 
 network_v4 make_network_v4(string_view str)
 {
@@ -206,7 +209,7 @@ network_v4 make_network_v4(string_view str,
   return make_network_v4(static_cast<std::string>(str), ec);
 }
 
-#endif // defined(BOOST_ASIO_HAS_STD_STRING_VIEW)
+#endif // defined(BOOST_ASIO_HAS_STRING_VIEW)
 
 } // namespace ip
 } // namespace asio

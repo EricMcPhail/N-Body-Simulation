@@ -7,6 +7,7 @@
 #ifndef BOOST_CONTEXT_DETAIL_EXCEPTION_H
 #define BOOST_CONTEXT_DETAIL_EXCEPTION_H
 
+#include <boost/assert.hpp>
 #include <boost/config.hpp>
 
 #include <boost/context/detail/fcontext.hpp>

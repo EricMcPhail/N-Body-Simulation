@@ -1,6 +1,8 @@
 #include "Particle.hpp"
 
+Particle::Particle() : position{ VectorND::Zero() },
+velocity{ VectorND::Zero() },
+acceleration{ VectorND::Zero() } {}
 
-Particle::Particle() : position{ getZeroVector() },
-velocity{ getZeroVector() },
-acceleration{ getZeroVector() } {}
+
+

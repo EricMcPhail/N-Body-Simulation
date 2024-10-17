@@ -1,19 +1,20 @@
 #pragma once
+#include "VectorSpace.hpp" // For vector lol
 #include <vector> // for std::vector
 #include <utility> // for std::pair
-#include <glm/glm.hpp>
-#include "Vector.hpp"
+#include <glm/glm.hpp> // For rendering
+
 
 class Model;
 class Shader;
 class Particle;
 
 class ParticleManager {
-    Vector getFutureNetForce(size_t particle_index, const double future_time, const std::vector<Vector>& future_positions, const std::vector<Vector>& future_velocities) const;
+    VectorND getFutureNetForce(size_t particle_index, const double future_time, const std::vector<VectorND>& future_positions, const std::vector<VectorND>& future_velocities) const;
 
-    Vector getFutureNetAcceleration(size_t particle_index, const double future_time, const std::vector<Vector>& future_positions, const std::vector<Vector>& future_velocities) const;
+    VectorND getFutureNetAcceleration(size_t particle_index, const double future_time, const std::vector<VectorND>& future_positions, const std::vector<VectorND>& future_velocities) const;
 
-    void systemOfEquations(const double t, const std::vector<std::pair<Vector, Vector>>& z, std::vector<std::pair<Vector, Vector>>& dzdt) const;
+    void systemOfEquations(const double t, const std::vector<std::pair<VectorND, VectorND>>& z, std::vector<std::pair<VectorND, VectorND>>& dzdt) const;
 
     void updateVerlet(double dt);
 
@@ -36,11 +37,11 @@ public:
 
     double getTotalEnergy() const;
 
-    Vector getNetForceOnParticle(const size_t particle_index) const;
+    VectorND getNetForceOnParticle(const size_t particle_index) const;
 
-    Vector getNetAccelerationOnParticle(const size_t particle_index) const;
+    VectorND getNetAccelerationOnParticle(const size_t particle_index) const;
 
-    void add(double mass = 1.0, Vector pos = getZeroVector(), Vector vel = getZeroVector(), Vector acc = getZeroVector());
+    void add(double mass = 1.0, VectorND pos = VectorND::Zero(), VectorND vel = VectorND::Zero(), VectorND acc = VectorND::Zero());
 
     void update(double dt, size_t integration_method = 0);
 

@@ -1,0 +1,236 @@
+#pragma once
+#include "VectorSpace.hpp"
+#include "MathFunctions.hpp"
+
+
+
+#include <iostream>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
+
+class Graph {
+public:
+    // Adjacency list represented as a hash map
+    std::unordered_map<int, std::unordered_set<int>> adj;
+
+    // Function to add an edge
+    void addDirectedEdge(int u, int v) {
+        adj[u].insert(v);
+    }
+
+    void addUndirectedEdge(int u, int v) {
+        addDirectedEdge(u, v);
+        addDirectedEdge(v, u);
+    }
+
+    // Function to remove a vertex and all edges associated with it
+    void removeVertex(int v) {
+        // Check if the vertex exists
+        if (adj.find(v) == adj.end()) return;
+
+        // Iterate over the adjacency list of the vertex to be removed
+        for (int neighbor : adj[v]) {
+            // Remove the edge from the neighbor to the vertex
+            adj[neighbor].erase(v);
+        }
+
+        // Remove the vertex from the graph
+        adj.erase(v);
+    }
+
+    // Utility function to print the graph (for demonstration purposes)
+    void printGraph() {
+        for (auto& pair : adj) {
+            std::cout << pair.first << ": ";
+            for (int neighbor : pair.second) {
+                std::cout << neighbor << " ";
+            }
+            std::cout << std::endl;
+        }
+    }
+
+
+    void printGraph2() {
+        for (auto& pair : adj) {
+            int u = pair.first; // Current vertex
+            for (int v : pair.second) {
+                if (u < v) { // Ensure each edge is printed once
+                    std::cout << u << " - " << v << std::endl;
+                }
+            }
+        }
+    }
+};
+
+int main2() {
+    Graph g;
+    g.addEdge(1, 2);
+    g.addEdge(1, 3);
+    g.addEdge(2, 4);
+    g.addEdge(3, 4);
+    g.addEdge(3, 5);
+
+    std::cout << "Graph before removing vertex 3:\n";
+    g.printGraph2();
+
+    g.removeVertex(3);
+
+    std::cout << "\nGraph after removing vertex 3:\n";
+    g.printGraph2();
+
+    return 0;
+}
+
+struct CollidableObjectPairs {
+
+};
+
+struct CollisionMatrix {
+    bool** A;
+    size_t N;
+
+    CollisionMatrix() {}
+    void addSize() {
+        bool** B = new bool*[N + 1];
+        for (size_t i = 0; i < N; i++) {
+            bool* B_i = new bool[N + 1];
+            for (size_t j = 0; j < N; j++) {
+                B_i[j] = A[i][j];
+            }
+
+        }
+    }
+};
+#include <unordered_set>
+struct CollisionManager {
+    std::vector<size_t> deleted_object_indicies;
+
+    
+
+
+    std::unordered_map<CollidableObject*, std::vector<size_t>> -;
+    std::unordered_map<size_t, CollidableObjectPairs>
+    
+    std::vector<std::vector<size_t>> collision_matrix;
+
+    // Go from some unique id to obj
+
+    std::vector<CollidableObject> allObjects;
+    // we will have an obj list from 1 to n
+    // 2 4 6 1 5
+    // 2 : 4 6 1 5
+    // 4 : 6 1 5
+    // 6 : 1 5
+    // 1 : 5
+    // done
+
+    std::vector<CollidableObject*> everything_lol;
+
+
+    
+
+    std::unordered_set<CollidableObject> aa;
+
+    void removeObjectPairs(size_t collidable_object_id) {
+
+
+    }
+
+    void deleteObject(size_t index) {
+        assert(0 <= index && index < allObjects.size());
+        allObjects.erase(allObjects.begin() + index);
+
+    }
+    void addObject(CollidableObject* obj) {
+        for (const auto& s : allPairs) {
+
+        }
+        allObjects.push_back(*obj);
+
+    }
+
+};
+
+struct ConvexHull {
+    std::vector<Vector> verticies;
+};
+
+struct AABB {
+    Vector min;
+    Vector max;
+};
+
+struct CollidableObject {
+    const size_t id;
+    KinematicData* motion;
+    HyperSphere* broadphase_collision_hull;
+    AABB* mediumphase_collision_hull;
+    std::vector<ConvexHull> narrowphase_collision_hull;
+};
+
+struct KinematicData {
+    Vector position;
+    Vector velocity;
+    Vector acceleration;
+};
+
+struct HyperSphere {
+	double radius;
+};
+
+
+
+
+
+REAL timeTillCollisionAccurate(const KinematicData& A, const KinematicData& B, REAL A_radius, REAL B_radius) {
+    Vector relative_position_AB = A.position - B.position;
+    Vector relative_velocity_AB = A.velocity - B.velocity;
+    Vector relative_acceleration_AB = A.acceleration - B.acceleration;
+    REAL radii_sum = A_radius + B_radius;
+    REAL radii_sum_sqrd = radii_sum * radii_sum;
+    REAL distance_between_centers_sqrd = dot(relative_position_AB, relative_position_AB);
+    if (distance_between_centers_sqrd <= radii_sum_sqrd) return 0.0;
+
+    REAL a = 0.25 * dot(relative_acceleration_AB, relative_acceleration_AB);
+    REAL b = dot(relative_velocity_AB, relative_acceleration_AB);
+    REAL c = dot(relative_position_AB, relative_acceleration_AB) + dot(relative_velocity_AB, relative_velocity_AB);
+    REAL d = 2.0 * dot(relative_position_AB, relative_velocity_AB);
+    REAL e = distance_between_centers_sqrd - radii_sum_sqrd;
+
+    // TODO SOLVE THIS QUARTIC FUNCTION
+    return -1.0;
+}
+
+REAL timeTillCollision(KinematicData& A, KinematicData& B, REAL A_radius, REAL B_radius) {
+    Vector relative_position_AB = A.position - B.position;
+    REAL radii_sum = A_radius + B_radius;
+    REAL radii_sum_sqrd = radii_sum * radii_sum;
+    REAL distance_between_centers_sqrd = dot(relative_position_AB, relative_position_AB);
+    if (distance_between_centers_sqrd <= radii_sum_sqrd) return 0.0; // already touching or intercecting 
+
+    Vector relative_velocity_AB = A.velocity - B.velocity;
+    REAL a = dot(relative_velocity_AB, relative_velocity_AB);
+    REAL b = 2.0 * dot(relative_position_AB, relative_velocity_AB);
+    REAL c = distance_between_centers_sqrd - radii_sum_sqrd;
+    std::pair<REAL, REAL> sol = solveQuadradic<REAL>(a, b, c);
+    // If value was complex, no solution so my convention here is to return -inf
+    if (std::isnan(sol.first)) return -std::numeric_limits<double>::infinity();
+
+    // Solution to quadradic formula was not complex
+    // Return the number with the smallest absolute value, prioritizing positive numbers
+    // meaning if there is a positive number, and a negative number, we return the positive number
+    // otherwise return the negative number closest to zero
+    if (sol.first < sol.second) {
+        if (sol.first >= 0.0) return sol.first;
+        else if (sol.second >= 0.0) return sol.second;
+        else return sol.second;
+    }
+    else {
+        if (sol.second >= 0.0) return sol.second;
+        else if (sol.first >= 0.0) return sol.first;
+        else return sol.first;
+    }
+}
+
+

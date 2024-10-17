@@ -3,7 +3,7 @@
 //
 //  See http://www.boost.org for most recent version, including documentation.
 //
-//  Copyright Antony Polukhin, 2013-2014.
+//  Copyright Antony Polukhin, 2013-2023.
 //
 //  Distributed under the Boost
 //  Software License, Version 1.0. (See accompanying file
@@ -17,14 +17,9 @@
 #endif
 
 #include <boost/variant/detail/apply_visitor_unary.hpp>
-#include <boost/variant/variant_fwd.hpp> // for BOOST_VARIANT_DO_NOT_USE_VARIADIC_TEMPLATES
-#include <boost/move/utility.hpp>
+#include <boost/variant/variant_fwd.hpp>
 #include <boost/type_traits/is_lvalue_reference.hpp>
 #include <boost/core/enable_if.hpp>
-
-#if defined(BOOST_VARIANT_DO_NOT_USE_VARIADIC_TEMPLATES) || defined(BOOST_NO_CXX11_HDR_TUPLE)
-#   error "This file requires <tuple> and variadic templates support"
-#endif
 
 #include <tuple>
 
@@ -64,7 +59,7 @@ namespace detail { namespace variant {
     typename enable_if_c<Wrapper::MoveSemantics, typename Wrapper::T>::type
         unwrap(Wrapper& w)
     {
-        return ::boost::move(w.v);
+        return std::move(w.v);
     }
 
     template <typename Wrapper>
@@ -126,7 +121,7 @@ namespace detail { namespace variant {
         typedef typename Visitor::result_type result_type;
 
         template <typename Value>
-        BOOST_VARIANT_AUX_GENERIC_RESULT_TYPE(result_type) operator()(Value&& value) const
+        result_type operator()(Value&& value) const
         {
             return ::boost::apply_visitor(
                 make_one_by_one_visitor_and_value_referer(
@@ -159,12 +154,12 @@ namespace detail { namespace variant {
         typedef typename Visitor::result_type result_type;
 
         template <class Tuple, std::size_t... I>
-        BOOST_VARIANT_AUX_GENERIC_RESULT_TYPE(result_type) do_call(Tuple t, index_sequence<I...>) const {
+        result_type do_call(Tuple t, index_sequence<I...>) const {
             return visitor_(unwrap(std::get<I>(t))...);
         }
 
         template <typename Value>
-        BOOST_VARIANT_AUX_GENERIC_RESULT_TYPE(result_type) operator()(Value&& value) const
+        result_type operator()(Value&& value) const
         {
             return do_call(
                 std::tuple_cat(values_, std::make_tuple(wrap<Value, ! ::boost::is_lvalue_reference<Value>::value>(value))),
@@ -176,7 +171,7 @@ namespace detail { namespace variant {
 }} // namespace detail::variant
 
     template <class Visitor, class T1, class T2, class T3, class... TN>
-    inline BOOST_VARIANT_AUX_GENERIC_RESULT_TYPE(typename Visitor::result_type)
+    inline typename Visitor::result_type
         apply_visitor(const Visitor& visitor, T1&& v1, T2&& v2, T3&& v3, TN&&... vn)
     {
         return ::boost::apply_visitor(
@@ -189,12 +184,12 @@ namespace detail { namespace variant {
                     ),
                 std::tuple<>()
                 ),
-                ::boost::forward<T1>(v1)
+                std::forward<T1>(v1)
             );
     }
     
     template <class Visitor, class T1, class T2, class T3, class... TN>
-    inline BOOST_VARIANT_AUX_GENERIC_RESULT_TYPE(typename Visitor::result_type)
+    inline typename Visitor::result_type
         apply_visitor(Visitor& visitor, T1&& v1, T2&& v2, T3&& v3, TN&&... vn)
     {
         return ::boost::apply_visitor(
@@ -207,7 +202,7 @@ namespace detail { namespace variant {
                     ),
                 std::tuple<>()
                 ),
-                ::boost::forward<T1>(v1)
+                std::forward<T1>(v1)
             );
     }
 

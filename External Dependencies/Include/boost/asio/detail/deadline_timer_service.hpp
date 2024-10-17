@@ -2,7 +2,7 @@
 // detail/deadline_timer_service.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2017 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2023 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -17,8 +17,10 @@
 
 #include <boost/asio/detail/config.hpp>
 #include <cstddef>
+#include <boost/asio/associated_cancellation_slot.hpp>
+#include <boost/asio/cancellation_type.hpp>
 #include <boost/asio/error.hpp>
-#include <boost/asio/io_context.hpp>
+#include <boost/asio/execution_context.hpp>
 #include <boost/asio/detail/bind_handler.hpp>
 #include <boost/asio/detail/fenced_block.hpp>
 #include <boost/asio/detail/memory.hpp>
@@ -44,7 +46,7 @@ namespace detail {
 
 template <typename Time_Traits>
 class deadline_timer_service
-  : public service_base<deadline_timer_service<Time_Traits> >
+  : public execution_context_service_base<deadline_timer_service<Time_Traits>>
 {
 public:
   // The time type.
@@ -64,9 +66,10 @@ public:
   };
 
   // Constructor.
-  deadline_timer_service(boost::asio::io_context& io_context)
-    : service_base<deadline_timer_service<Time_Traits> >(io_context),
-      scheduler_(boost::asio::use_service<timer_scheduler>(io_context))
+  deadline_timer_service(execution_context& context)
+    : execution_context_service_base<
+        deadline_timer_service<Time_Traits>>(context),
+      scheduler_(boost::asio::use_service<timer_scheduler>(context))
   {
     scheduler_.init_task();
     scheduler_.add_timer_queue(timer_queue_);
@@ -97,7 +100,7 @@ public:
     cancel(impl, ec);
   }
 
-  // Move-construct a new serial port implementation.
+  // Move-construct a new timer implementation.
   void move_construct(implementation_type& impl,
       implementation_type& other_impl)
   {
@@ -110,7 +113,7 @@ public:
     other_impl.might_have_pending_waits = false;
   }
 
-  // Move-assign from another serial port implementation.
+  // Move-assign from another timer implementation.
   void move_assign(implementation_type& impl,
       deadline_timer_service& other_service,
       implementation_type& other_impl)
@@ -127,6 +130,21 @@ public:
 
     impl.might_have_pending_waits = other_impl.might_have_pending_waits;
     other_impl.might_have_pending_waits = false;
+  }
+
+  // Move-construct a new timer implementation.
+  void converting_move_construct(implementation_type& impl,
+      deadline_timer_service&, implementation_type& other_impl)
+  {
+    move_construct(impl, other_impl);
+  }
+
+  // Move-assign from another timer implementation.
+  void converting_move_assign(implementation_type& impl,
+      deadline_timer_service& other_service,
+      implementation_type& other_impl)
+  {
+    move_assign(impl, other_service, other_impl);
   }
 
   // Cancel any asynchronous wait operations associated with the timer.
@@ -226,14 +244,25 @@ public:
   }
 
   // Start an asynchronous wait on the timer.
-  template <typename Handler>
-  void async_wait(implementation_type& impl, Handler& handler)
+  template <typename Handler, typename IoExecutor>
+  void async_wait(implementation_type& impl,
+      Handler& handler, const IoExecutor& io_ex)
   {
+    associated_cancellation_slot_t<Handler> slot
+      = boost::asio::get_associated_cancellation_slot(handler);
+
     // Allocate and construct an operation to wrap the handler.
-    typedef wait_handler<Handler> op;
+    typedef wait_handler<Handler, IoExecutor> op;
     typename op::ptr p = { boost::asio::detail::addressof(handler),
       op::ptr::allocate(handler), 0 };
-    p.p = new (p.v) op(handler);
+    p.p = new (p.v) op(handler, io_ex);
+
+    // Optionally register for per-operation cancellation.
+    if (slot.is_connected())
+    {
+      p.p->cancellation_key_ =
+        &slot.template emplace<op_cancellation>(this, &impl.timer_data);
+    }
 
     impl.might_have_pending_waits = true;
 
@@ -263,6 +292,34 @@ private:
     socket_ops::select(0, 0, 0, 0, &tv, ec);
 #endif // defined(BOOST_ASIO_WINDOWS_RUNTIME)
   }
+
+  // Helper class used to implement per-operation cancellation.
+  class op_cancellation
+  {
+  public:
+    op_cancellation(deadline_timer_service* s,
+        typename timer_queue<Time_Traits>::per_timer_data* p)
+      : service_(s),
+        timer_data_(p)
+    {
+    }
+
+    void operator()(cancellation_type_t type)
+    {
+      if (!!(type &
+            (cancellation_type::terminal
+              | cancellation_type::partial
+              | cancellation_type::total)))
+      {
+        service_->scheduler_.cancel_timer_by_key(
+            service_->timer_queue_, timer_data_, this);
+      }
+    }
+
+  private:
+    deadline_timer_service* service_;
+    typename timer_queue<Time_Traits>::per_timer_data* timer_data_;
+  };
 
   // The queue of timers.
   timer_queue<Time_Traits> timer_queue_;

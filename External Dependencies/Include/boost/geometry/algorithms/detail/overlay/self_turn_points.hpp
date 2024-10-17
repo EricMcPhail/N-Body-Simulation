@@ -3,9 +3,8 @@
 // Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
 // Copyright (c) 2017 Adam Wulkiewicz, Lodz, Poland.
 
-// This file was modified by Oracle on 2017.
-// Modifications copyright (c) 2017 Oracle and/or its affiliates.
-
+// This file was modified by Oracle on 2017-2021.
+// Modifications copyright (c) 2017-2021 Oracle and/or its affiliates.
 // Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
 
 // Use, modification and distribution is subject to the Boost Software License,
@@ -18,15 +17,6 @@
 
 #include <cstddef>
 
-#include <boost/mpl/vector_c.hpp>
-#include <boost/range.hpp>
-
-#include <boost/geometry/core/access.hpp>
-#include <boost/geometry/core/coordinate_dimension.hpp>
-#include <boost/geometry/core/point_order.hpp>
-#include <boost/geometry/core/tags.hpp>
-
-#include <boost/geometry/geometries/concepts/check.hpp>
 
 #include <boost/geometry/algorithms/detail/disjoint/box_box.hpp>
 #include <boost/geometry/algorithms/detail/partition.hpp>
@@ -34,7 +24,15 @@
 #include <boost/geometry/algorithms/detail/overlay/get_turns.hpp>
 #include <boost/geometry/algorithms/detail/sections/section_box_policies.hpp>
 
+#include <boost/geometry/core/coordinate_dimension.hpp>
+#include <boost/geometry/core/point_order.hpp>
+#include <boost/geometry/core/tags.hpp>
+
 #include <boost/geometry/geometries/box.hpp>
+#include <boost/geometry/geometries/concepts/check.hpp>
+
+#include <boost/geometry/strategies/detail.hpp>
+#include <boost/geometry/strategies/relate/services.hpp>
 
 #include <boost/geometry/util/condition.hpp>
 
@@ -66,29 +64,29 @@ template
     typename Geometry,
     typename Turns,
     typename TurnPolicy,
-    typename IntersectionStrategy,
+    typename Strategy,
     typename RobustPolicy,
     typename InterruptPolicy
 >
 struct self_section_visitor
 {
     Geometry const& m_geometry;
-    IntersectionStrategy const& m_intersection_strategy;
+    Strategy const& m_strategy;
     RobustPolicy const& m_rescale_policy;
     Turns& m_turns;
     InterruptPolicy& m_interrupt_policy;
-    std::size_t m_source_index;
+    int m_source_index;
     bool m_skip_adjacent;
 
     inline self_section_visitor(Geometry const& g,
-                                IntersectionStrategy const& is,
+                                Strategy const& s,
                                 RobustPolicy const& rp,
                                 Turns& turns,
                                 InterruptPolicy& ip,
-                                std::size_t source_index,
+                                int source_index,
                                 bool skip_adjacent)
         : m_geometry(g)
-        , m_intersection_strategy(is)
+        , m_strategy(s)
         , m_rescale_policy(rp)
         , m_turns(turns)
         , m_interrupt_policy(ip)
@@ -99,7 +97,9 @@ struct self_section_visitor
     template <typename Section>
     inline bool apply(Section const& sec1, Section const& sec2)
     {
-        if (! detail::disjoint::disjoint_box_box(sec1.bounding_box, sec2.bounding_box)
+        if (! detail::disjoint::disjoint_box_box(sec1.bounding_box,
+                                                 sec2.bounding_box,
+                                                 m_strategy)
                 && ! sec1.duplicate
                 && ! sec2.duplicate)
         {
@@ -113,7 +113,7 @@ struct self_section_visitor
                     >::apply(m_source_index, m_geometry, sec1,
                              m_source_index, m_geometry, sec2,
                              false, m_skip_adjacent,
-                             m_intersection_strategy,
+                             m_strategy,
                              m_rescale_policy,
                              m_turns, m_interrupt_policy);
         }
@@ -128,14 +128,14 @@ struct self_section_visitor
 template <bool Reverse, typename TurnPolicy>
 struct get_turns
 {
-    template <typename Geometry, typename IntersectionStrategy, typename RobustPolicy, typename Turns, typename InterruptPolicy>
+    template <typename Geometry, typename Strategy, typename RobustPolicy, typename Turns, typename InterruptPolicy>
     static inline bool apply(
             Geometry const& geometry,
-            IntersectionStrategy const& intersection_strategy,
+            Strategy const& strategy,
             RobustPolicy const& robust_policy,
             Turns& turns,
             InterruptPolicy& interrupt_policy,
-            std::size_t source_index, bool skip_adjacent)
+            int source_index, bool skip_adjacent)
     {
         typedef model::box
             <
@@ -150,25 +150,26 @@ struct get_turns
         // all potential spikes correctly
         typedef geometry::sections<box_type, 2> sections_type;
 
-        typedef boost::mpl::vector_c<std::size_t, 0, 1> dimensions;
+        typedef std::integer_sequence<std::size_t, 0, 1> dimensions;
 
         sections_type sec;
-        geometry::sectionalize<Reverse, dimensions>(geometry, robust_policy, sec,
-                                                  intersection_strategy.get_envelope_strategy());
+        geometry::sectionalize<Reverse, dimensions>(geometry, robust_policy,
+                                                    sec, strategy);
 
         self_section_visitor
             <
                 Reverse, Geometry,
-                Turns, TurnPolicy, IntersectionStrategy, RobustPolicy, InterruptPolicy
-            > visitor(geometry, intersection_strategy, robust_policy, turns, interrupt_policy, source_index, skip_adjacent);
+                Turns, TurnPolicy, Strategy, RobustPolicy, InterruptPolicy
+            > visitor(geometry, strategy, robust_policy, turns, interrupt_policy,
+                      source_index, skip_adjacent);
 
         // false if interrupted
         geometry::partition
             <
                 box_type
             >::apply(sec, visitor,
-                     detail::section::get_section_box(),
-                     detail::section::overlaps_section_box());
+                     detail::section::get_section_box<Strategy>(strategy),
+                     detail::section::overlaps_section_box<Strategy>(strategy));
 
         return ! interrupt_policy.has_intersections;
     }
@@ -229,7 +230,7 @@ struct self_get_turn_points
             RobustPolicy const& ,
             Turns& ,
             InterruptPolicy& ,
-            std::size_t /*source_index*/,
+            int /*source_index*/,
             bool /*skip_adjacent*/)
     {
         return true;
@@ -271,40 +272,114 @@ struct self_get_turn_points
 #endif // DOXYGEN_NO_DISPATCH
 
 
+namespace resolve_strategy
+{
+
+template
+<
+    bool Reverse,
+    typename AssignPolicy,
+    typename Strategies,
+    bool IsUmbrella = strategies::detail::is_umbrella_strategy<Strategies>::value
+>
+struct self_get_turn_points
+{
+    template
+    <
+        typename Geometry,
+        typename RobustPolicy,
+        typename Turns,
+        typename InterruptPolicy
+    >
+    static inline void apply(Geometry const& geometry,
+                             Strategies const& strategies,
+                             RobustPolicy const& robust_policy,
+                             Turns& turns,
+                             InterruptPolicy& interrupt_policy,
+                             int source_index,
+                             bool skip_adjacent)
+    {
+        using turn_policy = detail::overlay::get_turn_info<AssignPolicy>;
+
+        dispatch::self_get_turn_points
+                <
+                    Reverse,
+                    typename tag<Geometry>::type,
+                    Geometry,
+                    turn_policy
+                >::apply(geometry, strategies, robust_policy, turns, interrupt_policy,
+                         source_index, skip_adjacent);
+    }
+};
+
+template <bool Reverse, typename AssignPolicy, typename Strategy>
+struct self_get_turn_points<Reverse, AssignPolicy, Strategy, false>
+{
+    template
+    <
+        typename Geometry,
+        typename RobustPolicy,
+        typename Turns,
+        typename InterruptPolicy
+    >
+    static inline void apply(Geometry const& geometry,
+                             Strategy const& strategy,
+                             RobustPolicy const& robust_policy,
+                             Turns& turns,
+                             InterruptPolicy& interrupt_policy,
+                             int source_index,
+                             bool skip_adjacent)
+    {
+        using strategies::relate::services::strategy_converter;
+
+        self_get_turn_points
+            <
+                Reverse,
+                AssignPolicy,
+                decltype(strategy_converter<Strategy>::get(strategy))
+            >::apply(geometry,
+                     strategy_converter<Strategy>::get(strategy),
+                     robust_policy,
+                     turns,
+                     interrupt_policy,
+                     source_index,
+                     skip_adjacent);
+    }
+};
+
+
+} // namespace resolve_strategy
+
+
 #ifndef DOXYGEN_NO_DETAIL
 namespace detail { namespace self_get_turn_points
 {
 
-// Version where Reverse can be specified manually. TODO: 
+// Version where Reverse can be specified manually. TODO:
 // can most probably be merged with self_get_turn_points::get_turn
 template
 <
     bool Reverse,
     typename AssignPolicy,
     typename Geometry,
-    typename IntersectionStrategy,
+    typename Strategy,
     typename RobustPolicy,
     typename Turns,
     typename InterruptPolicy
 >
 inline void self_turns(Geometry const& geometry,
-                       IntersectionStrategy const& strategy,
+                       Strategy const& strategy,
                        RobustPolicy const& robust_policy,
                        Turns& turns,
                        InterruptPolicy& interrupt_policy,
-                       std::size_t source_index = 0,
+                       int source_index = 0,
                        bool skip_adjacent = false)
 {
     concepts::check<Geometry const>();
 
-    typedef detail::overlay::get_turn_info<detail::overlay::assign_null_policy> turn_policy;
-
-    dispatch::self_get_turn_points
+    resolve_strategy::self_get_turn_points
             <
-                Reverse,
-                typename tag<Geometry>::type,
-                Geometry,
-                turn_policy
+                Reverse, AssignPolicy, Strategy
             >::apply(geometry, strategy, robust_policy, turns, interrupt_policy,
                      source_index, skip_adjacent);
 }
@@ -324,22 +399,24 @@ inline void self_turns(Geometry const& geometry,
     \param turns container which will contain intersection points
     \param interrupt_policy policy determining if process is stopped
         when intersection is found
+    \param source_index source index for generated turns
+    \param skip_adjacent indicates if adjacent turns should be skipped
  */
 template
 <
     typename AssignPolicy,
     typename Geometry,
-    typename IntersectionStrategy,
+    typename Strategy,
     typename RobustPolicy,
     typename Turns,
     typename InterruptPolicy
 >
 inline void self_turns(Geometry const& geometry,
-                       IntersectionStrategy const& strategy,
+                       Strategy const& strategy,
                        RobustPolicy const& robust_policy,
                        Turns& turns,
                        InterruptPolicy& interrupt_policy,
-                       std::size_t source_index = 0,
+                       int source_index = 0,
                        bool skip_adjacent = false)
 {
     concepts::check<Geometry const>();
@@ -349,12 +426,11 @@ inline void self_turns(Geometry const& geometry,
             geometry::point_order<Geometry>::value
         >::value;
 
-    detail::self_get_turn_points::self_turns
+    resolve_strategy::self_get_turn_points
             <
-                reverse,
-                AssignPolicy
-            >(geometry, strategy, robust_policy, turns, interrupt_policy,
-              source_index, skip_adjacent);
+                reverse, AssignPolicy, Strategy
+            >::apply(geometry, strategy, robust_policy, turns, interrupt_policy,
+                     source_index, skip_adjacent);
 }
 
 

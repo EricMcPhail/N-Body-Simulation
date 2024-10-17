@@ -1,9 +1,9 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
 
-// Copyright (c) 2015 Barend Gehrels, Amsterdam, the Netherlands.
+// Copyright (c) 2015-2020 Barend Gehrels, Amsterdam, the Netherlands.
 
-// This file was modified by Oracle on 2015, 2017.
-// Modifications copyright (c) 2015-2017 Oracle and/or its affiliates.
+// This file was modified by Oracle on 2015-2020.
+// Modifications copyright (c) 2015-2020 Oracle and/or its affiliates.
 
 // Contributed and/or modified by Menelaos Karavelas, on behalf of Oracle
 // Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
@@ -12,16 +12,19 @@
 // Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
 
-#ifndef BOOST_GEOMETRY_ALGORITHMS_DETAIL_DIRECITON_CODE_HPP
-#define BOOST_GEOMETRY_ALGORITHMS_DETAIL_DIRECITON_CODE_HPP
+#ifndef BOOST_GEOMETRY_ALGORITHMS_DETAIL_DIRECTION_CODE_HPP
+#define BOOST_GEOMETRY_ALGORITHMS_DETAIL_DIRECTION_CODE_HPP
 
+
+#include <type_traits>
 
 #include <boost/geometry/core/access.hpp>
+#include <boost/geometry/core/static_assert.hpp>
+#include <boost/geometry/arithmetic/infinite_line_functions.hpp>
+#include <boost/geometry/algorithms/detail/make/make.hpp>
 #include <boost/geometry/util/math.hpp>
 #include <boost/geometry/util/select_coordinate_type.hpp>
 #include <boost/geometry/util/normalize_spheroidal_coordinates.hpp>
-
-#include <boost/mpl/assert.hpp>
 
 
 namespace boost { namespace geometry
@@ -32,108 +35,111 @@ namespace boost { namespace geometry
 namespace detail
 {
 
-
-// TODO: remove
-template <std::size_t Index, typename Point1, typename Point2>
-inline int sign_of_difference(Point1 const& point1, Point2 const& point2)
-{
-    return
-        math::equals(geometry::get<Index>(point1), geometry::get<Index>(point2))
-        ?
-        0
-        :
-        (geometry::get<Index>(point1) > geometry::get<Index>(point2) ? 1 : -1);
-}
-
-
-template <typename Point, typename CSTag = typename cs_tag<Point>::type>
+template <typename CSTag>
 struct direction_code_impl
 {
-    BOOST_MPL_ASSERT_MSG((false), NOT_IMPLEMENTED_FOR_THIS_CS, (CSTag));
+    BOOST_GEOMETRY_STATIC_ASSERT_FALSE(
+        "Not implemented for this coordinate system.",
+        CSTag);
 };
 
-template <typename Point>
-struct direction_code_impl<Point, cartesian_tag>
+template <>
+struct direction_code_impl<cartesian_tag>
 {
-    template <typename Point1, typename Point2>
-    static inline int apply(Point1 const& segment_a, Point1 const& segment_b,
-                            Point2 const& p)
+    template <typename PointSegmentA, typename PointSegmentB, typename Point2>
+    static inline int apply(PointSegmentA const& segment_a, PointSegmentB const& segment_b,
+                            Point2 const& point)
     {
-        typedef typename geometry::select_coordinate_type
+        using calc_t = typename geometry::select_coordinate_type
             <
-                Point1, Point2
-            >::type calc_t;
+                PointSegmentA, PointSegmentB, Point2
+            >::type;
 
-        if ( (math::equals(geometry::get<0>(segment_b), geometry::get<0>(segment_a))
-           && math::equals(geometry::get<1>(segment_b), geometry::get<1>(segment_a)))
-          || (math::equals(geometry::get<0>(segment_b), geometry::get<0>(p))
-           && math::equals(geometry::get<1>(segment_b), geometry::get<1>(p))) )
+        using line_type = model::infinite_line<calc_t>;
+
+        // Situation and construction of perpendicular line
+        //
+        //     P1     a--------------->b   P2
+        //                             |
+        //                             |
+        //                             v
+        //
+        // P1 is located right of the (directional) perpendicular line
+        // and therefore gets a negative side_value, and returns -1.
+        // P2 is to the left of the perpendicular line and returns 1.
+        // If the specified point is located on top of b, it returns 0.
+
+        line_type const line
+            = detail::make::make_perpendicular_line<calc_t>(segment_a,
+                segment_b, segment_b);
+
+        if (arithmetic::is_degenerate(line))
         {
             return 0;
         }
 
-        calc_t x1 = geometry::get<0>(segment_b) - geometry::get<0>(segment_a);
-        calc_t y1 = geometry::get<1>(segment_b) - geometry::get<1>(segment_a);
-        calc_t x2 = geometry::get<0>(segment_b) - geometry::get<0>(p);
-        calc_t y2 = geometry::get<1>(segment_b) - geometry::get<1>(p);
-
-        calc_t ax = (std::min)(math::abs(x1), math::abs(x2));
-        calc_t ay = (std::min)(math::abs(y1), math::abs(y2));
-
-        int s1 = 0, s2 = 0;
-        if (ax >= ay)
-        {
-            s1 = x1 > 0 ? 1 : -1;
-            s2 = x2 > 0 ? 1 : -1;
-        }
-        else
-        {
-            s1 = y1 > 0 ? 1 : -1;
-            s2 = y2 > 0 ? 1 : -1;
-        }
-
-        return s1 == s2 ? -1 : 1;
+        calc_t const sv = arithmetic::side_value(line, point);
+        static calc_t const zero = 0;
+        return sv == zero ? 0 : sv > zero ? 1 : -1;
     }
 };
 
-template <typename Point>
-struct direction_code_impl<Point, spherical_equatorial_tag>
+template <>
+struct direction_code_impl<spherical_equatorial_tag>
 {
-    template <typename Point1, typename Point2>
-    static inline int apply(Point1 const& segment_a, Point1 const& segment_b,
+    template <typename PointSegmentA, typename PointSegmentB, typename Point2>
+    static inline int apply(PointSegmentA const& segment_a, PointSegmentB const& segment_b,
                             Point2 const& p)
     {
-        typedef typename coordinate_type<Point1>::type coord1_t;
-        typedef typename coordinate_type<Point2>::type coord2_t;
-        typedef typename coordinate_system<Point1>::type::units units_t;
-        typedef typename coordinate_system<Point2>::type::units units2_t;
-        BOOST_MPL_ASSERT_MSG((boost::is_same<units_t, units2_t>::value),
-                             NOT_IMPLEMENTED_FOR_DIFFERENT_UNITS,
-                             (units_t, units2_t));
+        {
+            using units_sa_t =  typename cs_angular_units<PointSegmentA>::type;
+            using units_sb_t =  typename cs_angular_units<PointSegmentB>::type;
+            using units_p_t = typename cs_angular_units<Point2>::type;
+            BOOST_GEOMETRY_STATIC_ASSERT(
+                (std::is_same<units_sa_t, units_sb_t>::value),
+                "Not implemented for different units.",
+                units_sa_t, units_sb_t);
+            BOOST_GEOMETRY_STATIC_ASSERT(
+                (std::is_same<units_sa_t, units_p_t>::value),
+                "Not implemented for different units.",
+                units_sa_t, units_p_t);
+        }
 
-        typedef typename geometry::select_coordinate_type <Point1, Point2>::type calc_t;
-        typedef math::detail::constants_on_spheroid<coord1_t, units_t> constants1;
-        typedef math::detail::constants_on_spheroid<coord2_t, units_t> constants2;
-        static coord1_t const pi_half1 = constants1::max_latitude();
-        static coord2_t const pi_half2 = constants2::max_latitude();
+        using coor_sa_t = typename coordinate_type<PointSegmentA>::type;
+        using coor_sb_t = typename coordinate_type<PointSegmentB>::type;
+        using coor_p_t = typename coordinate_type<Point2>::type;
+
+        // Declare unit type (equal for all types) and calc type (coerced to most precise)
+        using units_t = typename cs_angular_units<Point2>::type;
+        using calc_t = typename geometry::select_coordinate_type
+            <
+                PointSegmentA, PointSegmentB, Point2
+            >::type;
+        using constants_sa_t = math::detail::constants_on_spheroid<coor_sa_t, units_t>;
+        using constants_sb_t = math::detail::constants_on_spheroid<coor_sb_t, units_t>;
+        using constants_p_t = math::detail::constants_on_spheroid<coor_p_t, units_t>;
+
+        static coor_sa_t const pi_half_sa = constants_sa_t::max_latitude();
+        static coor_sb_t const pi_half_sb = constants_sb_t::max_latitude();
+        static coor_p_t const pi_half_p = constants_p_t::max_latitude();
         static calc_t const c0 = 0;
 
-        coord1_t const a0 = geometry::get<0>(segment_a);
-        coord1_t const a1 = geometry::get<1>(segment_a);
-        coord1_t const b0 = geometry::get<0>(segment_b);
-        coord1_t const b1 = geometry::get<1>(segment_b);
-        coord2_t const p0 = geometry::get<0>(p);
-        coord2_t const p1 = geometry::get<1>(p);
-        
+        coor_sa_t const a0 = geometry::get<0>(segment_a);
+        coor_sa_t const a1 = geometry::get<1>(segment_a);
+        coor_sb_t const b0 = geometry::get<0>(segment_b);
+        coor_sb_t const b1 = geometry::get<1>(segment_b);
+        coor_p_t const p0 = geometry::get<0>(p);
+        coor_p_t const p1 = geometry::get<1>(p);
+
         if ( (math::equals(b0, a0) && math::equals(b1, a1))
           || (math::equals(b0, p0) && math::equals(b1, p1)) )
         {
             return 0;
         }
 
-        bool const is_a_pole = math::equals(pi_half1, math::abs(a1));
-        bool const is_b_pole = math::equals(pi_half1, math::abs(b1));
-        bool const is_p_pole = math::equals(pi_half2, math::abs(p1));
+        bool const is_a_pole = math::equals(pi_half_sa, math::abs(a1));
+        bool const is_b_pole = math::equals(pi_half_sb, math::abs(b1));
+        bool const is_p_pole = math::equals(pi_half_p, math::abs(p1));
 
         if ( is_b_pole && ((is_a_pole && math::sign(b1) == math::sign(a1))
                         || (is_p_pole && math::sign(b1) == math::sign(p1))) )
@@ -151,12 +157,12 @@ struct direction_code_impl<Point, spherical_equatorial_tag>
         calc_t const dlat1 = latitude_distance_signed<units_t, calc_t>(b1, a1, dlon1, is_antilon1);
         calc_t const dlat2 = latitude_distance_signed<units_t, calc_t>(b1, p1, dlon2, is_antilon2);
 
-        calc_t mx = is_a_pole || is_b_pole || is_p_pole ?
-                    c0 :
-                    (std::min)(is_antilon1 ? c0 : math::abs(dlon1),
-                               is_antilon2 ? c0 : math::abs(dlon2));
-        calc_t my = (std::min)(math::abs(dlat1),
-                               math::abs(dlat2));
+        calc_t const mx = is_a_pole || is_b_pole || is_p_pole
+            ? c0
+            : (std::min)(is_antilon1 ? c0 : math::abs(dlon1),
+                         is_antilon2 ? c0 : math::abs(dlon2));
+        calc_t const my = (std::min)(math::abs(dlat1),
+                                     math::abs(dlat2));
 
         int s1 = 0, s2 = 0;
         if (mx >= my)
@@ -176,7 +182,7 @@ struct direction_code_impl<Point, spherical_equatorial_tag>
     template <typename Units, typename T>
     static inline T latitude_distance_signed(T const& lat1, T const& lat2, T const& lon_ds, bool & is_antilon)
     {
-        typedef math::detail::constants_on_spheroid<T, Units> constants;
+        using constants = math::detail::constants_on_spheroid<T, Units>;
         static T const pi = constants::half_period();
         static T const c0 = 0;
 
@@ -196,41 +202,66 @@ struct direction_code_impl<Point, spherical_equatorial_tag>
     }
 };
 
-template <typename Point>
-struct direction_code_impl<Point, spherical_polar_tag>
+template <>
+struct direction_code_impl<spherical_polar_tag>
 {
-    template <typename Point1, typename Point2>
-    static inline int apply(Point1 segment_a, Point1 segment_b,
+    template <typename PointSegmentA, typename PointSegmentB, typename Point2>
+    static inline int apply(PointSegmentA segment_a, PointSegmentB segment_b,
                             Point2 p)
     {
-        typedef math::detail::constants_on_spheroid
+        using constants_sa_t = math::detail::constants_on_spheroid
             <
-                typename coordinate_type<Point1>::type,
-                typename coordinate_system<Point1>::type::units
-            > constants1;
-        typedef math::detail::constants_on_spheroid
+                typename coordinate_type<PointSegmentA>::type,
+                typename cs_angular_units<PointSegmentA>::type
+            >;
+        using constants_p_t = math::detail::constants_on_spheroid
             <
                 typename coordinate_type<Point2>::type,
-                typename coordinate_system<Point2>::type::units
-            > constants2;
+                typename cs_angular_units<Point2>::type
+            >;
 
         geometry::set<1>(segment_a,
-            constants1::max_latitude() - geometry::get<1>(segment_a));
+            constants_sa_t::max_latitude() - geometry::get<1>(segment_a));
         geometry::set<1>(segment_b,
-            constants1::max_latitude() - geometry::get<1>(segment_b));
+            constants_sa_t::max_latitude() - geometry::get<1>(segment_b));
         geometry::set<1>(p,
-            constants2::max_latitude() - geometry::get<1>(p));
+            constants_p_t::max_latitude() - geometry::get<1>(p));
 
         return direction_code_impl
                 <
-                    Point, spherical_equatorial_tag
+                    spherical_equatorial_tag
                 >::apply(segment_a, segment_b, p);
     }
 };
 
-template <typename Point>
-struct direction_code_impl<Point, geographic_tag>
-    : direction_code_impl<Point, spherical_equatorial_tag>
+// if spherical_tag is passed then pick cs_tag based on PointSegmentA type
+// with spherical_equatorial_tag as the default
+template <>
+struct direction_code_impl<spherical_tag>
+{
+    template <typename PointSegmentA, typename PointSegmentB, typename Point2>
+    static inline int apply(PointSegmentA segment_a, PointSegmentB segment_b,
+                            Point2 p)
+    {
+        return direction_code_impl
+            <
+                std::conditional_t
+                    <
+                        std::is_same
+                            <
+                                typename geometry::cs_tag<PointSegmentA>::type,
+                                spherical_polar_tag
+                            >::value,
+                        spherical_polar_tag,
+                        spherical_equatorial_tag
+                    >
+            >::apply(segment_a, segment_b, p);
+    }
+};
+
+template <>
+struct direction_code_impl<geographic_tag>
+    : direction_code_impl<spherical_equatorial_tag>
 {};
 
 // Gives sense of direction for point p, collinear w.r.t. segment (a,b)
@@ -238,11 +269,13 @@ struct direction_code_impl<Point, geographic_tag>
 // Returns 1 if p goes forward, so extends (a,b)
 // Returns 0 if p is equal with b, or if (a,b) is degenerate
 // Note that it does not do any collinearity test, that should be done before
-template <typename Point1, typename Point2>
-inline int direction_code(Point1 const& segment_a, Point1 const& segment_b,
+// In some cases the "segment" consists of different source points, and therefore
+// their types might differ.
+template <typename CSTag, typename PointSegmentA, typename PointSegmentB, typename Point2>
+inline int direction_code(PointSegmentA const& segment_a, PointSegmentB const& segment_b,
                           Point2 const& p)
 {
-    return direction_code_impl<Point1>::apply(segment_a, segment_b, p);
+    return direction_code_impl<CSTag>::apply(segment_a, segment_b, p);
 }
 
 
@@ -252,4 +285,4 @@ inline int direction_code(Point1 const& segment_a, Point1 const& segment_b,
 
 }} // namespace boost::geometry
 
-#endif // BOOST_GEOMETRY_ALGORITHMS_DETAIL_DIRECITON_CODE_HPP
+#endif // BOOST_GEOMETRY_ALGORITHMS_DETAIL_DIRECTION_CODE_HPP

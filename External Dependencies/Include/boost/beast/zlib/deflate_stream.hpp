@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2016-2017 Vinnie Falco (vinnie dot falco at gmail dot com)
+// Copyright (c) 2016-2019 Vinnie Falco (vinnie dot falco at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -90,6 +90,16 @@ public:
         Although the stream is ready to be used immediately
         after a reset, any required internal buffers are not
         dynamically allocated until needed.
+
+        @param level Compression level from 0 to 9.
+
+        @param windowBits The base two logarithm of the window size, or the
+        history buffer. It should be in the range 9..15.
+
+        @param memLevel How much memory should be allocated for the internal
+        compression state, with level from from 1 to 9.
+
+        @param strategy Strategy to tune the compression algorithm.
 
         @note Any unprocessed input or pending output from
         previous calls are discarded.
@@ -363,6 +373,8 @@ public:
     This function makes a conservative estimate of the maximum number
     of bytes needed to store the result of compressing a block of
     data.
+
+
 
     @param bytes The size of the uncompressed data.
 

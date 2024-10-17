@@ -1,22 +1,14 @@
 //
-// Copyright (c) 2016-2017 Vinnie Falco (vinnie dot falco at gmail dot com)
+// Copyright (c) 2016-2019 Vinnie Falco (vinnie dot falco at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 // Official repository: https://github.com/boostorg/beast
 //
-
-#ifndef BOOST_BEAST_ZLIB_ZLIB_HPP
-#define BOOST_BEAST_ZLIB_ZLIB_HPP
-
-#include <boost/beast/core/detail/config.hpp>
-#include <cstdint>
-#include <cstdlib>
-
 // This is a derivative work based on Zlib, copyright below:
 /*
-    Copyright (C) 1995-2013 Jean-loup Gailly and Mark Adler
+    Copyright (C) 1995-2022 Jean-loup Gailly and Mark Adler
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -41,6 +33,13 @@
     Comments) 1950 to 1952 in the files http://tools.ietf.org/html/rfc1950
     (zlib format), rfc1951 (deflate format) and rfc1952 (gzip format).
 */
+
+#ifndef BOOST_BEAST_ZLIB_ZLIB_HPP
+#define BOOST_BEAST_ZLIB_ZLIB_HPP
+
+#include <boost/beast/core/detail/config.hpp>
+#include <cstdint>
+#include <cstdlib>
 
 namespace boost {
 namespace beast {
@@ -81,50 +80,120 @@ struct z_params
     /** A pointer to the next input byte.
 
         If there is no more input, this may be set to `nullptr`.
+
+        The application must update `next_in` and `avail_in` when
+        `avail_in` has dropped to zero.
     */
     void const* next_in;
 
     /** The number of bytes of input available at `next_in`.
 
         If there is no more input, this should be set to zero.
+
+        The application must update `next_in` and `avail_in` when
+        `avail_in` has dropped to zero.
     */
     std::size_t avail_in;
 
     /** The total number of input bytes read so far.
+
+        This field is set by the compression library and must
+        not be updated by the application.
+
+        This field can also be used for statistics or progress
+        reports.
+
+        After compression, total_in holds the total size of the
+        uncompressed data and may be saved for use by the
+        decompressor (particularly if the decompressor wants
+        to decompress everything in a single step).
+
     */
     std::size_t total_in = 0;
 
     /** A pointer to the next output byte.
+
+        The application must update `next_out` and `avail_out`
+        when avail_out has dropped to zero.
     */
     void* next_out;
 
     /** The remaining bytes of space at `next_out`.
+
+        The application must update `next_out` and `avail_out`
+        when avail_out has dropped to zero.
     */
     std::size_t avail_out;
 
     /** The total number of bytes output so far.
+
+        This field is set by the compression library and must
+        not be updated by the application.
+
+        This field can also be used for statistics or progress
+        reports.
     */
     std::size_t total_out = 0;
 
-    int data_type = unknown;  // best guess about the data type: binary or text
+    /** Best guess about the data type: binary or text
+
+        This represents binary or text for deflate, or
+        the decoding state for inflate.
+     */
+    int data_type = unknown;
 };
 
 /** Flush option.
+
+    The allowed flush values for the @ref deflate_stream::write
+    and @ref inflate_stream::write functions.
+
+    Please refer to @ref deflate_stream::write and
+    @ref inflate_stream::write for details.
+
+    @see
+        deflate_stream::write,
+        inflate_stream::write
+
 */
 enum class Flush
 {
     // order matters
 
+    /// No policy
     none,
+
+    /// Flush all pending output on a bit boundary and hold up to seven bits
     block,
+
+    /// Flush all pending output on a bit boundary
     partial,
+
+    /// Flush all pending output on a byte boundary
     sync,
+
+    /// Flush all pending output on a byte boundary and reset state
     full,
+
+    /// Compress the input left in a single step
     finish,
+
+    /// Flush output as in Flush::block or at the end of each deflate block header
     trees
 };
 
-/* compression levels */
+/** Compression levels.
+
+    The compression levels go from 0 and 9: 1 gives best speed, 9 gives
+    best compression.
+
+    Compression level 0 gives no compression at all. The input data is
+    simply copied a block at a time.
+
+    A compression level 6 is usually a default compromise between
+    speed and compression.
+
+*/
 enum compression
 {
     none        =  0,

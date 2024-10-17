@@ -22,6 +22,12 @@
     <Filter Include="Currently Unused">
       <UniqueIdentifier>{bcc5fcc5-8b99-4432-8eeb-ff812d1fed47}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Collision Detection">
+      <UniqueIdentifier>{ea1e83c0-377c-4c20-a8b4-9e8c6a8c6c27}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Math">
+      <UniqueIdentifier>{ea22ef0e-901b-4578-9d9f-73aca003b62c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -57,15 +63,30 @@
     <ClCompile Include="TextRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="temp.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="EPA.cpp">
+      <Filter>Collision Detection</Filter>
+    </ClCompile>
+    <ClCompile Include="GJK.cpp">
+      <Filter>Collision Detection</Filter>
+    </ClCompile>
+    <ClCompile Include="openGJK.c">
+      <Filter>Collision Detection</Filter>
+    </ClCompile>
     <ClCompile Include="Vector.cpp">
+      <Filter>Currently Unused</Filter>
+    </ClCompile>
+    <ClCompile Include="CollidableObject.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="HyperSphereCollision.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Constants.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Model.hpp">
@@ -98,14 +119,60 @@
     <ClInclude Include="Polygon.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="AABB.hpp">
+    <ClInclude Include="StaticCollisionTest.hpp">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="temp.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="EPA.hpp">
+      <Filter>Collision Detection</Filter>
+    </ClInclude>
+    <ClInclude Include="GJK.hpp">
+      <Filter>Collision Detection</Filter>
+    </ClInclude>
+    <ClInclude Include="AABB.hpp">
+      <Filter>Collision Detection</Filter>
+    </ClInclude>
+    <ClInclude Include="HyperSphereCollision.hpp">
+      <Filter>Collision Detection</Filter>
+    </ClInclude>
+    <ClInclude Include="VectorSpace.hpp">
+      <Filter>Math</Filter>
     </ClInclude>
     <ClInclude Include="MathFunctions.hpp">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Constants.hpp">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="NumberType.hpp">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="openGJK.h">
+      <Filter>Collision Detection</Filter>
+    </ClInclude>
+    <ClInclude Include="testaaaa.hpp">
+      <Filter>Collision Detection</Filter>
+    </ClInclude>
+    <ClInclude Include="Projection.hpp">
+      <Filter>Collision Detection</Filter>
+    </ClInclude>
+    <ClInclude Include="MinHeap.hpp">
+      <Filter>Collision Detection</Filter>
+    </ClInclude>
+    <ClInclude Include="VectorAAAA.hpp">
+      <Filter>Currently Unused</Filter>
+    </ClInclude>
+    <ClInclude Include="CollidableObject.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Vector.hpp">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="GeometryShader.h">
+      <Filter>Shaders</Filter>
+    </ClInclude>
+    <ClInclude Include="HyperSphereCollision.asdasdasdadsahpp" />
+    <ClInclude Include="GJK_SIGNED_VOLUMES.h">
+      <Filter>Collision Detection</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -119,6 +186,16 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="text.fs">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="packages.config" />
+    <None Include="geometry_shader.gs">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="geometry_shader.fs">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="geometry_shader.vs">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

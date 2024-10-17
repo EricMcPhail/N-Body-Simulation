@@ -7,7 +7,7 @@
 #ifndef BOOST_CONTEXT_CONTINUATION_H
 #define BOOST_CONTEXT_CONTINUATION_H
 
-#include <boost/predef.h>
+#include <boost/predef/os.h>
 #if BOOST_OS_MACOS
 #define _XOPEN_SOURCE 600
 #endif
@@ -16,6 +16,7 @@ extern "C" {
 #include <ucontext.h>
 }
 
+#include <boost/predef.h>
 #include <boost/context/detail/config.hpp>
 
 #include <algorithm>
@@ -37,6 +38,7 @@ extern "C" {
 #if defined(BOOST_NO_CXX14_STD_EXCHANGE)
 #include <boost/context/detail/exchange.hpp>
 #endif
+#include <boost/context/detail/externc.hpp>
 #if defined(BOOST_NO_CXX17_STD_INVOKE)
 #include <boost/context/detail/invoke.hpp>
 #endif
@@ -52,20 +54,6 @@ extern "C" {
 # include BOOST_ABI_PREFIX
 #endif
 
-#if defined(BOOST_USE_ASAN)
-extern "C" {
-void __sanitizer_start_switch_fiber( void **, const void *, size_t);
-void __sanitizer_finish_switch_fiber( void *, const void **, size_t *);
-}
-#endif
-
-#if defined(BOOST_USE_SEGMENTED_STACKS)
-extern "C" {
-void __splitstack_getcontext( void * [BOOST_CONTEXT_SEGMENTS]);
-void __splitstack_setcontext( void * [BOOST_CONTEXT_SEGMENTS]);
-}
-#endif
-
 namespace boost {
 namespace context {
 namespace detail {
@@ -73,12 +61,19 @@ namespace detail {
 // tampoline function
 // entered if the execution context
 // is resumed for the first time
-template< typename Record >
-static void entry_func( void * data) noexcept {
-    Record * record = static_cast< Record * >( data);
-    BOOST_ASSERT( nullptr != record);
-    // start execution of toplevel context-function
-    record->run();
+template <typename Record>
+#if BOOST_OS_MACOS
+static void entry_func(std::uint32_t data_high,
+                       std::uint32_t data_low) noexcept {
+  auto data =
+      reinterpret_cast<void *>(std::uint64_t(data_high) << 32 | data_low);
+#else
+static void entry_func(void *data) noexcept {
+#endif
+  Record *record = static_cast<Record *>(data);
+  BOOST_ASSERT(nullptr != record);
+  // start execution of toplevel context-function
+  record->run();
 }
 
 struct BOOST_CONTEXT_DECL activation_record {
@@ -222,7 +217,7 @@ struct BOOST_CONTEXT_DECL activation_record_initializer {
 };
 
 struct forced_unwind {
-    activation_record  *   from{ nullptr };
+    activation_record   *   from{ nullptr };
 
     forced_unwind( activation_record * from_) noexcept :
         from{ from_ } {
@@ -266,7 +261,7 @@ public:
         try {
             // invoke context-function
 #if defined(BOOST_NO_CXX17_STD_INVOKE)
-            c = invoke( fn_, std::move( c) );
+            c = boost::context::detail::invoke( fn_, std::move( c) );
 #else
             c = std::invoke( fn_, std::move( c) );
 #endif  
@@ -300,6 +295,8 @@ static activation_record * create_context1( StackAlloc && salloc, Fn && fn) {
             reinterpret_cast< uintptr_t >( sctx.sp) - static_cast< uintptr_t >( sctx.size) );
     // create user-context
     if ( BOOST_UNLIKELY( 0 != ::getcontext( & record->uctx) ) ) {
+        record->~capture_t();
+        salloc.deallocate( sctx);
         throw std::system_error(
                 std::error_code( errno, std::system_category() ),
                 "getcontext() failed");
@@ -309,7 +306,15 @@ static activation_record * create_context1( StackAlloc && salloc, Fn && fn) {
     record->uctx.uc_stack.ss_size = reinterpret_cast< uintptr_t >( storage) -
             reinterpret_cast< uintptr_t >( stack_bottom) - static_cast< uintptr_t >( 64);
     record->uctx.uc_link = nullptr;
-    ::makecontext( & record->uctx, ( void (*)() ) & entry_func< capture_t >, 1, record);
+#if BOOST_OS_MACOS
+    const auto integer = std::uint64_t(record);
+    ::makecontext(&record->uctx, (void (*)()) & entry_func<capture_t>, 2,
+                  std::uint32_t((integer >> 32) & 0xFFFFFFFF),
+                  std::uint32_t(integer));
+#else
+    ::makecontext(&record->uctx, (void (*)()) & entry_func<capture_t>, 1,
+                  record);
+#endif
 #if defined(BOOST_USE_ASAN)
     record->stack_bottom = record->uctx.uc_stack.ss_sp;
     record->stack_size = record->uctx.uc_stack.ss_size;
@@ -333,6 +338,8 @@ static activation_record * create_context2( preallocated palloc, StackAlloc && s
             reinterpret_cast< uintptr_t >( palloc.sctx.sp) - static_cast< uintptr_t >( palloc.sctx.size) );
     // create user-context
     if ( BOOST_UNLIKELY( 0 != ::getcontext( & record->uctx) ) ) {
+        record->~capture_t();
+        salloc.deallocate( palloc.sctx);
         throw std::system_error(
                 std::error_code( errno, std::system_category() ),
                 "getcontext() failed");
@@ -342,7 +349,15 @@ static activation_record * create_context2( preallocated palloc, StackAlloc && s
     record->uctx.uc_stack.ss_size = reinterpret_cast< uintptr_t >( storage) -
             reinterpret_cast< uintptr_t >( stack_bottom) - static_cast< uintptr_t >( 64);
     record->uctx.uc_link = nullptr;
-    ::makecontext( & record->uctx,  ( void (*)() ) & entry_func< capture_t >, 1, record);
+#if BOOST_OS_MACOS
+    const auto integer = std::uint64_t(record);
+    ::makecontext(&record->uctx, (void (*)()) & entry_func<capture_t>, 2,
+                  std::uint32_t((integer >> 32) & 0xFFFFFFFF),
+                  std::uint32_t(integer));
+#else
+    ::makecontext(&record->uctx, (void (*)()) & entry_func<capture_t>, 1,
+                  record);
+#endif
 #if defined(BOOST_USE_ASAN)
     record->stack_bottom = record->uctx.uc_stack.ss_sp;
     record->stack_size = record->uctx.uc_stack.ss_size;
@@ -408,7 +423,11 @@ public:
         return * this;
     }
 
-    continuation resume() {
+    continuation resume() & {
+        return std::move( * this).resume();
+    }
+
+    continuation resume() && {
 #if defined(BOOST_NO_CXX14_STD_EXCHANGE)
         detail::activation_record * ptr = detail::exchange( ptr_, nullptr)->resume();
 #else
@@ -420,11 +439,16 @@ public:
             ptr = detail::activation_record::current()->ontop( ptr);
             detail::activation_record::current()->ontop = nullptr;
         }
-        return continuation{ ptr };
+        return { ptr };
     }
 
     template< typename Fn >
-    continuation resume_with( Fn && fn) {
+    continuation resume_with( Fn && fn) & {
+        return std::move( * this).resume_with( std::forward< Fn >( fn) );
+    }
+
+    template< typename Fn >
+    continuation resume_with( Fn && fn) && {
 #if defined(BOOST_NO_CXX14_STD_EXCHANGE)
         detail::activation_record * ptr =
             detail::exchange( ptr_, nullptr)->resume_with< continuation >( std::forward< Fn >( fn) );
@@ -438,7 +462,7 @@ public:
             ptr = detail::activation_record::current()->ontop( ptr);
             detail::activation_record::current()->ontop = nullptr;
         }
-        return continuation{ ptr };
+        return { ptr };
     }
 
     explicit operator bool() const noexcept {
@@ -449,30 +473,12 @@ public:
         return nullptr == ptr_ || ptr_->terminated;
     }
 
-    bool operator==( continuation const& other) const noexcept {
-        return ptr_ == other.ptr_;
-    }
-
-    bool operator!=( continuation const& other) const noexcept {
-        return ptr_ != other.ptr_;
-    }
-
     bool operator<( continuation const& other) const noexcept {
         return ptr_ < other.ptr_;
     }
 
-    bool operator>( continuation const& other) const noexcept {
-        return other.ptr_ < ptr_;
-    }
-
-    bool operator<=( continuation const& other) const noexcept {
-        return ! ( * this > other);
-    }
-
-    bool operator>=( continuation const& other) const noexcept {
-        return ! ( * this < other);
-    }
-
+    #if !defined(BOOST_EMBTC)
+    
     template< typename charT, class traitsT >
     friend std::basic_ostream< charT, traitsT > &
     operator<<( std::basic_ostream< charT, traitsT > & os, continuation const& other) {
@@ -483,11 +489,33 @@ public:
         }
     }
 
+    #else
+    
+    template< typename charT, class traitsT >
+    friend std::basic_ostream< charT, traitsT > &
+    operator<<( std::basic_ostream< charT, traitsT > & os, continuation const& other);
+
+    #endif
+
     void swap( continuation & other) noexcept {
         std::swap( ptr_, other.ptr_);
     }
 };
 
+#if defined(BOOST_EMBTC)
+
+    template< typename charT, class traitsT >
+    inline std::basic_ostream< charT, traitsT > &
+    operator<<( std::basic_ostream< charT, traitsT > & os, continuation const& other) {
+        if ( nullptr != other.ptr_) {
+            return os << other.ptr_;
+        } else {
+            return os << "{not-a-context}";
+        }
+    }
+
+#endif
+    
 template<
     typename Fn,
     typename = detail::disable_overload< continuation, Fn >

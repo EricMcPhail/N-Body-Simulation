@@ -1,7 +1,8 @@
 // Boost.Geometry
 
-// Copyright (c) 2015-2016 Oracle and/or its affiliates.
+// Copyright (c) 2015-2018 Oracle and/or its affiliates.
 
+// Contributed and/or modified by Vissarion Fysikopoulos, on behalf of Oracle
 // Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
 
 // Use, modification and distribution is subject to the Boost Software License,
@@ -15,7 +16,6 @@
 #include <boost/math/constants/constants.hpp>
 
 #include <boost/geometry/core/radius.hpp>
-#include <boost/geometry/core/srs.hpp>
 
 #include <boost/geometry/util/condition.hpp>
 #include <boost/geometry/util/math.hpp>
@@ -136,7 +136,7 @@ public:
 
         CT const f_sqr = math::sqr(f);
         CT const f_sqr_per_64 = f_sqr / CT(64);
-    
+
         if ( BOOST_GEOMETRY_CONDITION(EnableDistance) )
         {
             CT const n1 = X * (A + C*X);
@@ -151,7 +151,7 @@ public:
             //result.distance = a * sin_d * (T - delta1d);
             result.distance = a * sin_d * (T - delta1d + delta2d);
         }
-    
+
         if ( BOOST_GEOMETRY_CONDITION(CalcAzimuths) )
         {
             // NOTE: if both cos_latX == 0 then below we'd have 0 * INF
@@ -162,7 +162,7 @@ public:
             CT const F = c2*Y-E*(c4-X);
             CT const M = CT(32)*T-(CT(20)*T-A)*X-(B+c4)*Y;
             CT const G = f*T/c2 + f_sqr_per_64 * M;
-            
+
             // TODO:
             // If d_lambda is close to 90 or -90 deg then tan(d_lambda) is big
             // and F is small. The result is not accurate.
@@ -178,7 +178,7 @@ public:
 
             CT const pi = math::pi<CT>();
 
-            if (BOOST_GEOMETRY_CONDITION(EnableAzimuth))
+            if (BOOST_GEOMETRY_CONDITION(CalcFwdAzimuth))
             {
                 CT alpha1 = v + u;
                 if (alpha1 > pi)
@@ -189,7 +189,7 @@ public:
                 result.azimuth = alpha1;
             }
 
-            if (BOOST_GEOMETRY_CONDITION(EnableReverseAzimuth))
+            if (BOOST_GEOMETRY_CONDITION(CalcRevAzimuth))
             {
                 CT alpha2 = pi - (v - u);
                 if (alpha2 > pi)

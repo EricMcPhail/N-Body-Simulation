@@ -7,11 +7,14 @@
 #ifndef BOOST_COROUTINE2_DETAIL_WRAP_H
 #define BOOST_COROUTINE2_DETAIL_WRAP_H
 
+#include <functional>
 #include <type_traits>
 
 #include <boost/config.hpp>
+#if defined(BOOST_NO_CXX17_STD_INVOKE)
 #include <boost/context/detail/invoke.hpp>
-#include <boost/context/continuation.hpp>
+#endif
+#include <boost/context/fiber.hpp>
 
 #include <boost/coroutine2/detail/config.hpp>
 
@@ -41,12 +44,19 @@ public:
     wrapper( wrapper && other) = default;
     wrapper & operator=( wrapper && other) = default;
 
-    boost::context::continuation
-    operator()( boost::context::continuation && c) {
+    boost::context::fiber
+    operator()( boost::context::fiber && c) {
+#if defined(BOOST_NO_CXX17_STD_INVOKE)
         return boost::context::detail::invoke(
                 std::move( fn1_),
                 fn2_,
-                std::forward< boost::context::continuation >( c) );
+                std::forward< boost::context::fiber >( c) );
+#else
+        return std::invoke(
+                std::move( fn1_),
+                fn2_,
+                std::forward< boost::context::fiber >( c) );
+#endif
     }
 };
 

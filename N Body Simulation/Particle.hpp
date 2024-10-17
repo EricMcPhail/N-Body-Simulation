@@ -1,12 +1,11 @@
 #pragma once
-#include <glm/glm.hpp>
-#include "Vector.hpp"
+#include "VectorSpace.hpp"
 
 class Particle {
 public:
-    Vector position;
-    Vector velocity;
-    Vector acceleration;
+    VectorND position;
+    VectorND velocity;
+    VectorND acceleration;
 
     double mass = 1.0;
     double restitution = 1.0;

@@ -66,7 +66,7 @@ struct CtorArgN : public placement_destroy<T>
 
    virtual void construct_n(void *mem
                      , std::size_t num
-                     , std::size_t &constructed)
+                     , std::size_t &constructed) BOOST_OVERRIDE
    {
       T* memory      = static_cast<T*>(mem);
       for(constructed = 0; constructed < num; ++constructed){
@@ -200,7 +200,7 @@ struct CtorArg##N : placement_destroy<T>\
    CtorArg##N ( BOOST_MOVE_UREF##N  )\
       BOOST_MOVE_COLON##N BOOST_MOVE_FWD_INIT##N{}\
    \
-   virtual void construct_n(void *mem, std::size_t num, std::size_t &constructed)\
+   virtual void construct_n(void *mem, std::size_t num, std::size_t &constructed) BOOST_OVERRIDE\
    {\
       T* memory      = static_cast<T*>(mem);\
       for(constructed = 0; constructed < num; ++constructed){\
@@ -230,7 +230,7 @@ struct CtorIt##N : public placement_destroy<T>\
    CtorIt##N ( BOOST_MOVE_VAL##N  )\
       BOOST_MOVE_COLON##N BOOST_MOVE_VAL_INIT##N{}\
    \
-   virtual void construct_n(void *mem, std::size_t num, std::size_t &constructed)\
+   virtual void construct_n(void *mem, std::size_t num, std::size_t &constructed) BOOST_OVERRIDE\
    {\
       T* memory      = static_cast<T*>(mem);\
       for(constructed = 0; constructed < num; ++constructed){\
@@ -274,7 +274,7 @@ class named_proxy
    T *operator()( BOOST_MOVE_UREF##N ) const\
    {\
       typedef typename if_c<is_iterator \
-         , CtorIt##N<T BOOST_MOVE_I##N BOOST_MOVE_TARG##N> \
+         , CtorIt##N <T BOOST_MOVE_I##N BOOST_MOVE_TARG##N> \
          , CtorArg##N<T BOOST_MOVE_I##N BOOST_MOVE_TARG##N> \
          >::type ctor_obj_t;\
       ctor_obj_t ctor_obj = ctor_obj_t( BOOST_MOVE_FWD##N );\

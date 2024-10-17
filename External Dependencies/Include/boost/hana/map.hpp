@@ -2,7 +2,7 @@
 @file
 Defines `boost::hana::map`.
 
-@copyright Louis Dionne 2013-2017
+Copyright Louis Dionne 2013-2022
 Distributed under the Boost Software License, Version 1.0.
 (See accompanying file LICENSE.md or copy at http://boost.org/LICENSE_1_0.txt)
  */
@@ -62,7 +62,7 @@ Distributed under the Boost Software License, Version 1.0.
 #include <utility>
 
 
-BOOST_HANA_NAMESPACE_BEGIN
+namespace boost { namespace hana {
     //////////////////////////////////////////////////////////////////////////
     // operators
     //////////////////////////////////////////////////////////////////////////
@@ -124,7 +124,7 @@ BOOST_HANA_NAMESPACE_BEGIN
         };
 
         template <typename HashTable, typename Storage>
-        struct map_impl
+        struct map_impl final
             : detail::searchable_operators<map_impl<HashTable, Storage>>
             , detail::operators::adl<map_impl<HashTable, Storage>>
         {
@@ -572,6 +572,6 @@ BOOST_HANA_NAMESPACE_BEGIN
             );
         }
     };
-BOOST_HANA_NAMESPACE_END
+}} // end namespace boost::hana
 
 #endif // !BOOST_HANA_MAP_HPP

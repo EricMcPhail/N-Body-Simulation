@@ -1,20 +1,20 @@
 #pragma once
+#include "VectorSpace.hpp"
 #include <utility> // for std::pair
-#include "Vector.hpp"
 
 class Particle;
 
 std::pair<double, double> solveQuadradic(double a, double b, double c);
 
-Vector getForceGravity(const Vector& position_A, const double mass_A, const Vector& position_B, const double mass_B);
+VectorND getForceGravity(const VectorND& position_A, const double mass_A, const VectorND& position_B, const double mass_B);
 
-Vector getAccelerationGravity(const Vector& posA, const double massA, const Vector& posB, const double massB);
+VectorND getAccelerationGravity(const VectorND& posA, const double massA, const VectorND& posB, const double massB);
 
-double getKineticEnergy(const double mass, const Vector& velocity);
+double getKineticEnergy(const double mass, const VectorND& velocity);
 
-double getPotentialEnergy(const Vector& position_A, const double mass_A, const Vector& position_B, const double mass_B);
+double getPotentialEnergy(const VectorND& position_A, const double mass_A, const VectorND& position_B, const double mass_B);
 
-Vector getForceGravityOnParticleAFromB(const Particle& A, const Particle& B);
+VectorND getForceGravityOnParticleAFromB(const Particle& A, const Particle& B);
 
 double getKineticEnergy(const Particle& P);
 
@@ -25,3 +25,4 @@ double timeTillCollisionAccurate(const Particle& A, const Particle& B);
 double timeTillCollision(const Particle& A, const Particle& B);
 
 void doCollision(Particle& A, Particle& B);
+

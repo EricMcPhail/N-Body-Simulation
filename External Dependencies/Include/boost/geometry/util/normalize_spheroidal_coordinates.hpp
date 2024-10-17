@@ -1,9 +1,12 @@
 // Boost.Geometry (aka GGL, Generic Geometry Library)
 
-// Copyright (c) 2015-2017, Oracle and/or its affiliates.
+// Copyright (c) 2017 Adam Wulkiewicz, Lodz, Poland.
+
+// Copyright (c) 2015-2022, Oracle and/or its affiliates.
 
 // Contributed and/or modified by Menelaos Karavelas, on behalf of Oracle
 // Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
+// Contributed and/or modified by Adeel Ahmad, as part of Google Summer of Code 2018 program
 
 // Licensed under the Boost Software License version 1.0.
 // http://www.boost.org/users/license.html
@@ -19,7 +22,7 @@
 namespace boost { namespace geometry
 {
 
-namespace math 
+namespace math
 {
 
 #ifndef DOXYGEN_NO_DETAIL
@@ -198,7 +201,7 @@ template <typename Units, bool IsEquatorial>
 struct latitude_convert_if_polar
 {
     template <typename T>
-    static inline void apply(T & lat) {}
+    static inline void apply(T & /*lat*/) {}
 };
 
 template <typename Units>
@@ -222,14 +225,14 @@ protected:
     {
         return
             math::mod(value + constants::half_period(), constants::period())
-            - constants::half_period();            
+            - constants::half_period();
     }
 
     static inline CoordinateType normalize_down(CoordinateType const& value)
     {
         return
             math::mod(value - constants::half_period(), constants::period())
-            + constants::half_period();            
+            + constants::half_period();
     }
 
 public:
@@ -305,10 +308,35 @@ public:
         BOOST_GEOMETRY_ASSERT(! math::larger(latitude, constants::max_latitude()));
 #endif // BOOST_GEOMETRY_NORMALIZE_LATITUDE
 
-        BOOST_GEOMETRY_ASSERT(math::smaller(constants::min_longitude(), longitude));
+        BOOST_GEOMETRY_ASSERT(! math::larger_or_equals(constants::min_longitude(), longitude));
         BOOST_GEOMETRY_ASSERT(! math::larger(longitude, constants::max_longitude()));
     }
 };
+
+
+template <typename Units, typename CoordinateType>
+inline void normalize_angle_loop(CoordinateType& angle)
+{
+    typedef constants_on_spheroid<CoordinateType, Units> constants;
+    CoordinateType const pi = constants::half_period();
+    CoordinateType const two_pi = constants::period();
+    while (angle > pi)
+        angle -= two_pi;
+    while (angle <= -pi)
+        angle += two_pi;
+}
+
+template <typename Units, typename CoordinateType>
+inline void normalize_angle_cond(CoordinateType& angle)
+{
+    typedef constants_on_spheroid<CoordinateType, Units> constants;
+    CoordinateType const pi = constants::half_period();
+    CoordinateType const two_pi = constants::period();
+    if (angle > pi)
+        angle -= two_pi;
+    else if (angle <= -pi)
+        angle += two_pi;
+}
 
 
 } // namespace detail
@@ -361,6 +389,37 @@ inline void normalize_longitude(CoordinateType& longitude)
         >::apply(longitude);
 }
 
+/*!
+\brief Short utility to normalize the azimuth on a spheroid
+       in the range (-180, 180].
+\tparam Units The units of the coordindate system in the spheroid
+\tparam CoordinateType The type of the coordinates
+\param angle Angle
+\ingroup utility
+*/
+template <typename Units, typename CoordinateType>
+inline void normalize_azimuth(CoordinateType& angle)
+{
+    normalize_longitude<Units, CoordinateType>(angle);
+}
+
+/*!
+\brief Normalize the given values.
+\tparam ValueType The type of the values
+\param x Value x
+\param y Value y
+TODO: adl1995 - Merge this function with
+formulas/vertex_longitude.hpp
+*/
+template<typename ValueType>
+inline void normalize_unit_vector(ValueType& x, ValueType& y)
+{
+    ValueType h = boost::math::hypot(x, y);
+
+    BOOST_GEOMETRY_ASSERT(h > 0);
+
+    x /= h; y /= h;
+}
 
 /*!
 \brief Short utility to calculate difference between two longitudes
@@ -436,7 +495,7 @@ inline CoordinateType longitude_interval_distance_signed(CoordinateType const& l
         dist_a12 = -dist_a12;
         dist_a1b = -dist_a1b;
     }
-    
+
     return dist_a1b < c0 ? dist_a1b
          : dist_a1b > dist_a12 ? dist_a1b - dist_a12
          : c0;

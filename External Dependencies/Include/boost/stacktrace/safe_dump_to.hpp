@@ -1,4 +1,4 @@
-// Copyright Antony Polukhin, 2016-2017.
+// Copyright Antony Polukhin, 2016-2023.
 //
 // Distributed under the Boost Software License, Version 1.0. (See
 // accompanying file LICENSE_1_0.txt or copy at
@@ -12,7 +12,10 @@
 #   pragma once
 #endif
 
-#include <boost/detail/winapi/config.hpp>
+#if defined(BOOST_WINDOWS)
+#include <boost/winapi/config.hpp>
+#endif
+
 #include <boost/stacktrace/detail/push_options.h>
 
 #ifdef BOOST_INTEL
@@ -32,19 +35,19 @@ namespace detail {
     enum helper{ max_frames_dump = 128 };
 
     BOOST_STACKTRACE_FUNCTION std::size_t from_dump(const char* filename, native_frame_ptr_t* out_frames);
-    BOOST_STACKTRACE_FUNCTION std::size_t dump(const char* file, const native_frame_ptr_t* frames, std::size_t frames_count) BOOST_NOEXCEPT;
+    BOOST_STACKTRACE_FUNCTION std::size_t dump(const char* file, const native_frame_ptr_t* frames, std::size_t frames_count) noexcept;
 #if defined(BOOST_WINDOWS)
-    BOOST_STACKTRACE_FUNCTION std::size_t dump(void* fd, const native_frame_ptr_t* frames, std::size_t frames_count) BOOST_NOEXCEPT;
+    BOOST_STACKTRACE_FUNCTION std::size_t dump(void* fd, const native_frame_ptr_t* frames, std::size_t frames_count) noexcept;
 #else
     // POSIX
-    BOOST_STACKTRACE_FUNCTION std::size_t dump(int fd, const native_frame_ptr_t* frames, std::size_t frames_count) BOOST_NOEXCEPT;
+    BOOST_STACKTRACE_FUNCTION std::size_t dump(int fd, const native_frame_ptr_t* frames, std::size_t frames_count) noexcept;
 #endif
 
 
 struct this_thread_frames { // struct is required to avoid warning about usage of inline+BOOST_NOINLINE
-    BOOST_NOINLINE BOOST_STACKTRACE_FUNCTION static std::size_t collect(native_frame_ptr_t* out_frames, std::size_t max_frames_count, std::size_t skip) BOOST_NOEXCEPT;
+    BOOST_NOINLINE BOOST_STACKTRACE_FUNCTION static std::size_t collect(native_frame_ptr_t* out_frames, std::size_t max_frames_count, std::size_t skip) noexcept;
 
-    BOOST_NOINLINE static std::size_t safe_dump_to_impl(void* memory, std::size_t size, std::size_t skip) BOOST_NOEXCEPT {
+    BOOST_NOINLINE static std::size_t safe_dump_to_impl(void* memory, std::size_t size, std::size_t skip) noexcept {
         typedef boost::stacktrace::detail::native_frame_ptr_t native_frame_ptr_t;
 
         if (size < sizeof(native_frame_ptr_t)) {
@@ -58,7 +61,7 @@ struct this_thread_frames { // struct is required to avoid warning about usage o
     }
 
     template <class T>
-    BOOST_NOINLINE static std::size_t safe_dump_to_impl(T file, std::size_t skip, std::size_t max_depth) BOOST_NOEXCEPT {
+    BOOST_NOINLINE static std::size_t safe_dump_to_impl(T file, std::size_t skip, std::size_t max_depth) noexcept {
         typedef boost::stacktrace::detail::native_frame_ptr_t native_frame_ptr_t;
 
         native_frame_ptr_t buffer[boost::stacktrace::detail::max_frames_dump + 1];
@@ -81,12 +84,12 @@ struct this_thread_frames { // struct is required to avoid warning about usage o
 ///
 /// @b Async-Handler-Safety: Safe.
 ///
-/// @returns Stored call sequence depth including terminating zero frame.
+/// @returns Stored call sequence depth including terminating zero frame. To get the actually consumed bytes multiply this value by the sizeof(boost::stacktrace::frame::native_frame_ptr_t)
 ///
 /// @param memory Preallocated buffer to store current function call sequence into.
 ///
 /// @param size Size of the preallocated buffer.
-BOOST_FORCEINLINE std::size_t safe_dump_to(void* memory, std::size_t size) BOOST_NOEXCEPT {
+BOOST_FORCEINLINE std::size_t safe_dump_to(void* memory, std::size_t size) noexcept {
     return  boost::stacktrace::detail::this_thread_frames::safe_dump_to_impl(memory, size, 0);
 }
 
@@ -96,19 +99,19 @@ BOOST_FORCEINLINE std::size_t safe_dump_to(void* memory, std::size_t size) BOOST
 ///
 /// @b Async-Handler-Safety: Safe.
 ///
-/// @returns Stored call sequence depth including terminating zero frame.
+/// @returns Stored call sequence depth including terminating zero frame.  To get the actually consumed bytes multiply this value by the sizeof(boost::stacktrace::frame::native_frame_ptr_t)
 ///
 /// @param skip How many top calls to skip and do not store.
 ///
 /// @param memory Preallocated buffer to store current function call sequence into.
 ///
 /// @param size Size of the preallocated buffer.
-BOOST_FORCEINLINE std::size_t safe_dump_to(std::size_t skip, void* memory, std::size_t size) BOOST_NOEXCEPT {
+BOOST_FORCEINLINE std::size_t safe_dump_to(std::size_t skip, void* memory, std::size_t size) noexcept {
     return  boost::stacktrace::detail::this_thread_frames::safe_dump_to_impl(memory, size, skip);
 }
 
 
-/// @brief Opens a file and rewrites its content with current function call sequence.
+/// @brief Opens a file and rewrites its content with current function call sequence if such operations are async signal safe.
 ///
 /// @b Complexity: O(N) where N is call sequence length, O(1) if BOOST_STACKTRACE_USE_NOOP is defined.
 ///
@@ -117,11 +120,11 @@ BOOST_FORCEINLINE std::size_t safe_dump_to(std::size_t skip, void* memory, std::
 /// @returns Stored call sequence depth including terminating zero frame.
 ///
 /// @param file File to store current function call sequence.
-BOOST_FORCEINLINE std::size_t safe_dump_to(const char* file) BOOST_NOEXCEPT {
+BOOST_FORCEINLINE std::size_t safe_dump_to(const char* file) noexcept {
     return boost::stacktrace::detail::this_thread_frames::safe_dump_to_impl(file, 0, boost::stacktrace::detail::max_frames_dump);
 }
 
-/// @brief Opens a file and rewrites its content with current function call sequence.
+/// @brief Opens a file and rewrites its content with current function call sequence if such operations are async signal safe.
 ///
 /// @b Complexity: O(N) where N is call sequence length, O(1) if BOOST_STACKTRACE_USE_NOOP is defined.
 ///
@@ -134,13 +137,13 @@ BOOST_FORCEINLINE std::size_t safe_dump_to(const char* file) BOOST_NOEXCEPT {
 /// @param max_depth Max call sequence depth to collect.
 ///
 /// @param file File to store current function call sequence.
-BOOST_FORCEINLINE std::size_t safe_dump_to(std::size_t skip, std::size_t max_depth, const char* file) BOOST_NOEXCEPT {
+BOOST_FORCEINLINE std::size_t safe_dump_to(std::size_t skip, std::size_t max_depth, const char* file) noexcept {
     return boost::stacktrace::detail::this_thread_frames::safe_dump_to_impl(file, skip, max_depth);
 }
 
 #ifdef BOOST_STACKTRACE_DOXYGEN_INVOKED
 
-/// @brief Writes into the provided file descriptor the current function call sequence.
+/// @brief Writes into the provided file descriptor the current function call sequence if such operation is async signal safe.
 ///
 /// @b Complexity: O(N) where N is call sequence length, O(1) if BOOST_STACKTRACE_USE_NOOP is defined.
 ///
@@ -149,9 +152,9 @@ BOOST_FORCEINLINE std::size_t safe_dump_to(std::size_t skip, std::size_t max_dep
 /// @returns Stored call sequence depth including terminating zero frame.
 ///
 /// @param file File to store current function call sequence.
-BOOST_FORCEINLINE std::size_t safe_dump_to(platform_specific_descriptor fd) BOOST_NOEXCEPT;
+BOOST_FORCEINLINE std::size_t safe_dump_to(platform_specific_descriptor fd) noexcept;
 
-/// @brief Writes into the provided file descriptor the current function call sequence.
+/// @brief Writes into the provided file descriptor the current function call sequence if such operation is async signal safe.
 ///
 /// @b Complexity: O(N) where N is call sequence length, O(1) if BOOST_STACKTRACE_USE_NOOP is defined.
 ///
@@ -164,26 +167,26 @@ BOOST_FORCEINLINE std::size_t safe_dump_to(platform_specific_descriptor fd) BOOS
 /// @param max_depth Max call sequence depth to collect.
 ///
 /// @param file File to store current function call sequence.
-BOOST_FORCEINLINE std::size_t safe_dump_to(std::size_t skip, std::size_t max_depth, platform_specific_descriptor fd) BOOST_NOEXCEPT;
+BOOST_FORCEINLINE std::size_t safe_dump_to(std::size_t skip, std::size_t max_depth, platform_specific_descriptor fd) noexcept;
 
 #elif defined(BOOST_WINDOWS)
 
-BOOST_FORCEINLINE std::size_t safe_dump_to(void* fd) BOOST_NOEXCEPT {
+BOOST_FORCEINLINE std::size_t safe_dump_to(void* fd) noexcept {
     return boost::stacktrace::detail::this_thread_frames::safe_dump_to_impl(fd, 0, boost::stacktrace::detail::max_frames_dump);
 }
 
-BOOST_FORCEINLINE std::size_t safe_dump_to(std::size_t skip, std::size_t max_depth, void* fd) BOOST_NOEXCEPT {
+BOOST_FORCEINLINE std::size_t safe_dump_to(std::size_t skip, std::size_t max_depth, void* fd) noexcept {
     return boost::stacktrace::detail::this_thread_frames::safe_dump_to_impl(fd, skip, max_depth);
 }
 
 #else
 
 // POSIX
-BOOST_FORCEINLINE std::size_t safe_dump_to(int fd) BOOST_NOEXCEPT {
+BOOST_FORCEINLINE std::size_t safe_dump_to(int fd) noexcept {
     return boost::stacktrace::detail::this_thread_frames::safe_dump_to_impl(fd, 0, boost::stacktrace::detail::max_frames_dump);
 }
 
-BOOST_FORCEINLINE std::size_t safe_dump_to(std::size_t skip, std::size_t max_depth, int fd) BOOST_NOEXCEPT {
+BOOST_FORCEINLINE std::size_t safe_dump_to(std::size_t skip, std::size_t max_depth, int fd) noexcept {
     return boost::stacktrace::detail::this_thread_frames::safe_dump_to_impl(fd, skip, max_depth);
 }
 

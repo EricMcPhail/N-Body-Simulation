@@ -1,5 +1,6 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\packages\Microsoft.Windows.CppWinRT.2.0.220531.1\build\native\Microsoft.Windows.CppWinRT.props" Condition="Exists('..\packages\Microsoft.Windows.CppWinRT.2.0.220531.1\build\native\Microsoft.Windows.CppWinRT.props')" />
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -140,14 +141,20 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="CollidableObject.cpp" />
+    <ClCompile Include="EPA.cpp" />
+    <ClCompile Include="GJK.cpp" />
     <ClCompile Include="glad.c" />
+    <ClCompile Include="HyperSphereCollision.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Model.cpp" />
+    <ClCompile Include="openGJK.c" />
     <ClCompile Include="Particle.cpp" />
     <ClCompile Include="ParticleManager.cpp" />
     <ClCompile Include="PhysicsEquations.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="Simulation.cpp" />
+    <ClCompile Include="temp.cpp" />
     <ClCompile Include="TextRenderer.cpp" />
     <ClCompile Include="ThreadPool.cpp" />
     <ClCompile Include="Vector.cpp" />
@@ -155,7 +162,20 @@
   <ItemGroup>
     <ClInclude Include="AABB.hpp" />
     <ClInclude Include="Camera.hpp" />
+    <ClInclude Include="CollidableObject.hpp" />
     <ClInclude Include="Constants.hpp" />
+    <ClInclude Include="EPA.hpp" />
+    <ClInclude Include="GJK.hpp" />
+    <ClInclude Include="GJK_SIGNED_VOLUMES.h" />
+    <ClInclude Include="HyperSphereCollision.hpp" />
+    <ClInclude Include="MinHeap.hpp" />
+    <ClInclude Include="NumberType.hpp" />
+    <ClInclude Include="openGJK.h" />
+    <ClInclude Include="Projection.hpp" />
+    <ClInclude Include="GeometryShader.h" />
+    <ClInclude Include="testaaaa.hpp" />
+    <ClInclude Include="VectorSpace.hpp" />
+    <ClInclude Include="HyperSphereCollision.asdasdasdadsahpp" />
     <ClInclude Include="MathFunctions.hpp" />
     <ClInclude Include="Model.hpp" />
     <ClInclude Include="Particle.hpp" />
@@ -165,17 +185,31 @@
     <ClInclude Include="Polygon.hpp" />
     <ClInclude Include="Shader.hpp" />
     <ClInclude Include="Simulation.hpp" />
+    <ClInclude Include="StaticCollisionTest.hpp" />
+    <ClInclude Include="temp.hpp" />
     <ClInclude Include="TextRenderer.hpp" />
     <ClInclude Include="ThreadPool.hpp" />
-    <ClInclude Include="Vector.hpp" />
+    <ClInclude Include="VectorAAAA.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="fragment_shader.fs" />
+    <None Include="geometry_shader.fs" />
+    <None Include="geometry_shader.gs" />
+    <None Include="geometry_shader.vs" />
+    <None Include="packages.config" />
     <None Include="text.fs" />
     <None Include="text.vs" />
     <None Include="vertex_shader.vs" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="..\packages\Microsoft.Windows.CppWinRT.2.0.220531.1\build\native\Microsoft.Windows.CppWinRT.targets" Condition="Exists('..\packages\Microsoft.Windows.CppWinRT.2.0.220531.1\build\native\Microsoft.Windows.CppWinRT.targets')" />
   </ImportGroup>
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\packages\Microsoft.Windows.CppWinRT.2.0.220531.1\build\native\Microsoft.Windows.CppWinRT.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Windows.CppWinRT.2.0.220531.1\build\native\Microsoft.Windows.CppWinRT.props'))" />
+    <Error Condition="!Exists('..\packages\Microsoft.Windows.CppWinRT.2.0.220531.1\build\native\Microsoft.Windows.CppWinRT.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Windows.CppWinRT.2.0.220531.1\build\native\Microsoft.Windows.CppWinRT.targets'))" />
+  </Target>
 </Project>

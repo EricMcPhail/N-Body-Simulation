@@ -17,7 +17,7 @@
 
 namespace boost { namespace process { namespace detail { namespace windows {
 
-typedef int pid_t;
+typedef ::boost::winapi::DWORD_ pid_t;
 
 struct child_handle
 {
@@ -66,7 +66,7 @@ struct child_handle
 
     pid_t id() const
     {
-        return static_cast<int>(proc_info.dwProcessId);
+        return static_cast<pid_t>(proc_info.dwProcessId);
     }
 
     typedef ::boost::winapi::HANDLE_ process_handle_t;
@@ -81,7 +81,7 @@ struct child_handle
     {
         ::boost::winapi::BOOL_ value;
         if (!::boost::winapi::IsProcessInJob(proc_info.hProcess, nullptr, &value))
-            throw_last_error("IsProcessinJob Failed");
+            throw_last_error("IsProcessInJob Failed");
         return value!=0;
     }
     bool in_group(std::error_code &ec) const noexcept

@@ -1,11 +1,13 @@
+#if 0
+
 #include "ParticleManager.hpp"
 #include "PhysicsEquations.hpp"
 #include "Particle.hpp"
 #include "Model.hpp"
 #include <glm/gtc/matrix_transform.hpp> // for glm::translate
 
-Vector ParticleManager::getFutureNetForce(size_t particle_index, const double future_time, const std::vector<Vector>& future_positions, const std::vector<Vector>& future_velocities) const {
-    Vector netForceOnParticle = Vector(0.0, 0.0, 0.0);
+VectorND ParticleManager::getFutureNetForce(size_t particle_index, const double future_time, const std::vector<VectorND>& future_positions, const std::vector<VectorND>& future_velocities) const {
+    VectorND netForceOnParticle = VectorND::Zero();
     // Calculate force on self
 
     // Calculate force by other particles
@@ -17,8 +19,8 @@ Vector ParticleManager::getFutureNetForce(size_t particle_index, const double fu
     return netForceOnParticle;
 }
 
-Vector ParticleManager::getFutureNetAcceleration(size_t particle_index, const double future_time, const std::vector<Vector>& future_positions, const std::vector<Vector>& future_velocities) const {
-    if (particles[particle_index].is_affected_by_gravity == false) return Vector{ 0.0, 0.0, 0.0 };
+VectorND ParticleManager::getFutureNetAcceleration(size_t particle_index, const double future_time, const std::vector<VectorND>& future_positions, const std::vector<VectorND>& future_velocities) const {
+    if (particles[particle_index].is_affected_by_gravity == false) return VectorND::Zero();
     return getFutureNetForce(particle_index, future_time, future_positions, future_velocities) / particles[particle_index].mass;
 }
 
@@ -27,9 +29,9 @@ Vector ParticleManager::getFutureNetAcceleration(size_t particle_index, const do
 //----------------------------------------------------------------------------------------------------//
 // z     = (y, dy/dx)          = (position, velocity)
 // dz/dt = (dy/dt, d^2y, dt^2) = (velocity, acceleration)
-void ParticleManager::systemOfEquations(const double t, const std::vector<std::pair<Vector, Vector>>& z, std::vector<std::pair<Vector, Vector>>& dzdt) const {
-    std::vector<Vector> future_posistions(particles.size());
-    std::vector<Vector> future_velocities(particles.size());
+void ParticleManager::systemOfEquations(const double t, const std::vector<std::pair<VectorND, VectorND>>& z, std::vector<std::pair<VectorND, VectorND>>& dzdt) const {
+    std::vector<VectorND> future_posistions(particles.size());
+    std::vector<VectorND> future_velocities(particles.size());
 
     for (size_t i = 0; i < particles.size(); i++) {
         future_posistions[i] = z[i].first;
@@ -44,9 +46,9 @@ void ParticleManager::systemOfEquations(const double t, const std::vector<std::p
 
 void ParticleManager::updateVerlet(double dt) {
     for (size_t i = 0; i < particles.size(); i++) {
-        Vector new_pos = particles[i].position + particles[i].velocity * dt + particles[i].acceleration * (dt * dt * 0.5);
-        Vector new_acc = getNetAccelerationOnParticle(i);
-        Vector new_vel = particles[i].velocity + (particles[i].acceleration + new_acc) * (dt * 0.5);
+        VectorND new_pos = particles[i].position + particles[i].velocity * dt + particles[i].acceleration * (dt * dt * 0.5);
+        VectorND new_acc = getNetAccelerationOnParticle(i);
+        VectorND new_vel = particles[i].velocity + (particles[i].acceleration + new_acc) * (dt * 0.5);
         particles[i].position = new_pos;
         particles[i].velocity = new_vel;
         particles[i].acceleration = new_acc;
@@ -55,8 +57,8 @@ void ParticleManager::updateVerlet(double dt) {
 }
 
 void ParticleManager::updateSystemVerlet(double dt) {
-    std::vector<Vector> future_posistions(particles.size());
-    std::vector<Vector> future_velocities(particles.size());
+    std::vector<VectorND> future_posistions(particles.size());
+    std::vector<VectorND> future_velocities(particles.size());
 
     for (size_t i = 0; i < particles.size(); i++) {
         future_posistions[i] = particles[i].position + particles[i].velocity * dt + particles[i].acceleration * (dt * dt * 0.5);
@@ -64,9 +66,9 @@ void ParticleManager::updateSystemVerlet(double dt) {
     }
 
     for (size_t i = 0; i < particles.size(); i++) {
-        Vector new_pos = particles[i].position + particles[i].velocity * dt + particles[i].acceleration * (dt * dt * 0.5);
-        Vector new_acc = getFutureNetAcceleration(i, time + dt, future_posistions, future_velocities);
-        Vector new_vel = particles[i].velocity + (particles[i].acceleration + new_acc) * (dt * 0.5);
+        VectorND new_pos = particles[i].position + particles[i].velocity * dt + particles[i].acceleration * (dt * dt * 0.5);
+        VectorND new_acc = getFutureNetAcceleration(i, time + dt, future_posistions, future_velocities);
+        VectorND new_vel = particles[i].velocity + (particles[i].acceleration + new_acc) * (dt * 0.5);
         particles[i].position = new_pos;
         particles[i].velocity = new_vel;
         particles[i].acceleration = new_acc;
@@ -80,16 +82,16 @@ void ParticleManager::updateSystemRK4(double dt) {
     const size_t num_particles = particles.size();
 
     // Pairs of Temperary Position and Velocity vectors for each Particle
-    std::vector<std::pair<Vector, Vector>> z(num_particles);
+    std::vector<std::pair<VectorND, VectorND>> z(num_particles);
 
     // k1,...,k4 are arrays of pairs of velocity and acceleration vectors for each particle
-    std::vector<std::pair<Vector, Vector>> k1(num_particles);
-    std::vector<std::pair<Vector, Vector>> k2(num_particles);
-    std::vector<std::pair<Vector, Vector>> k3(num_particles);
-    std::vector<std::pair<Vector, Vector>> k4(num_particles);
+    std::vector<std::pair<VectorND, VectorND>> k1(num_particles);
+    std::vector<std::pair<VectorND, VectorND>> k2(num_particles);
+    std::vector<std::pair<VectorND, VectorND>> k3(num_particles);
+    std::vector<std::pair<VectorND, VectorND>> k4(num_particles);
 
     for (size_t i = 0; i < num_particles; ++i) {
-        z[i] = std::pair<Vector, Vector>(particles[i].position, particles[i].velocity);
+        z[i] = std::pair<VectorND, VectorND>(particles[i].position, particles[i].velocity);
     }
 
     systemOfEquations(time, z, k1);
@@ -129,7 +131,7 @@ void ParticleManager::updateSystemRK(double dt, unsigned int number_of_steps) {
     const size_t num_particles = particles.size();
 
     // Pairs of Temperary Position and Velocity vectors for each Particle
-    std::vector<std::pair<Vector, Vector>> z(num_particles);
+    std::vector<std::pair<VectorND, VectorND>> z(num_particles);
 
     std::vector<std::vector<double>> a{ {0.5}, {0.0, 0.5}, {0.0, 0.0, 1.0} };
     std::vector<double> b{ 1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0 };
@@ -137,10 +139,10 @@ void ParticleManager::updateSystemRK(double dt, unsigned int number_of_steps) {
 
     const size_t stages = c.size();
 
-    std::vector<std::vector<std::pair<Vector, Vector>>> k_values(stages);
+    std::vector<std::vector<std::pair<VectorND, VectorND>>> k_values(stages);
     for (size_t i = 0; i < stages; i++) {
         for (size_t j = 0; j < num_particles; j++) {
-            k_values[i].push_back(std::pair<Vector, Vector>{Vector{ 0.0, 0.0, 0.0 }, Vector{ 0.0, 0.0, 0.0 }});
+            k_values[i].push_back(std::pair<VectorND, VectorND>{VectorND::Zero(), VectorND::Zero()});
         }
     }
 
@@ -159,7 +161,7 @@ void ParticleManager::updateSystemRK(double dt, unsigned int number_of_steps) {
 
         for (int i = 0; i < stages; i++) {
             for (int x = 0; x < num_particles; ++x) {
-                z[x] = std::pair<Vector, Vector>(particles[x].position, particles[x].velocity);
+                z[x] = std::pair<VectorND, VectorND>(particles[x].position, particles[x].velocity);
             }
             for (int j = 0; j < i; ++j) {
                 for (int x = 0; x < num_particles; ++x) {
@@ -169,7 +171,7 @@ void ParticleManager::updateSystemRK(double dt, unsigned int number_of_steps) {
             }
             systemOfEquations(t + c[i] * h, z, k_values[i]);
         }
-        std::vector<std::pair<Vector, Vector>> y(num_particles);
+        std::vector<std::pair<VectorND, VectorND>> y(num_particles);
 
         for (int j = 0; j < num_particles; ++j) {
             y[j].first = particles[j].position;
@@ -242,15 +244,15 @@ void ParticleManager::updateSystemRK45(double dt, size_t number_of_steps, double
     const size_t stages = c.size();
     const size_t num_particles = particles.size();
 
-    std::vector<std::vector<std::pair<Vector, Vector>>> k_values(stages);
+    std::vector<std::vector<std::pair<VectorND, VectorND>>> k_values(stages);
 
     for (size_t i = 0; i < stages; i++) {
         for (size_t j = 0; j < num_particles; j++) {
-            k_values[i].push_back(std::pair<Vector, Vector>{Vector{ 0.0, 0.0, 0.0 }, Vector{ 0.0, 0.0, 0.0 }});
+            k_values[i].push_back(std::pair<VectorND, VectorND>{VectorND::Zero(), VectorND::Zero()});
         }
     }
 
-    std::vector<std::pair<Vector, Vector>> z(num_particles);
+    std::vector<std::pair<VectorND, VectorND>> z(num_particles);
 
 
     while (t < endTime) {
@@ -260,7 +262,7 @@ void ParticleManager::updateSystemRK45(double dt, size_t number_of_steps, double
 
         for (int i = 0; i < stages; i++) {
             for (int x = 0; x < num_particles; ++x) {
-                z[x] = std::pair<Vector, Vector>(particles[x].position, particles[x].velocity);
+                z[x] = std::pair<VectorND, VectorND>(particles[x].position, particles[x].velocity);
             }
             for (int j = 0; j < i; ++j) {
                 for (int x = 0; x < num_particles; ++x) {
@@ -272,7 +274,7 @@ void ParticleManager::updateSystemRK45(double dt, size_t number_of_steps, double
         }
 
         // Calculate the 4th and 5th order solutions
-        std::vector<std::pair<Vector, Vector>> y4(num_particles), y5(num_particles);
+        std::vector<std::pair<VectorND, VectorND>> y4(num_particles), y5(num_particles);
 
         for (int j = 0; j < num_particles; ++j) {
             y4[j].first = particles[j].position;
@@ -290,13 +292,13 @@ void ParticleManager::updateSystemRK45(double dt, size_t number_of_steps, double
         // Calculate the error
         double error_p = 0.0;
         double error_v = 0.0;
-        Vector error_pos = Vector{ 0.0, 0.0, 0.0 };
-        Vector error_vel = Vector{ 0.0, 0.0, 0.0 };
+        VectorND error_pos = VectorND::Zero();
+        VectorND error_vel = VectorND::Zero();
         for (size_t i = 0; i < num_particles; ++i) {
             error_pos = y5[i].first - y4[i].first;
             error_vel = y5[i].second - y4[i].second;
-            error_p += glm::length(error_pos);
-            error_v += glm::length(error_vel);
+            error_p += error_pos.norm(); // l2 norm
+            error_v += error_vel.norm(); // l2 norm
         }
         double error = std::max(error_p, error_v);
 
@@ -349,8 +351,8 @@ double ParticleManager::getTotalEnergy() const {
     return getTotalKineticEnergy() + getTotalPotentialEnergy();
 }
 
-Vector ParticleManager::getNetForceOnParticle(const size_t particle_index) const {
-    Vector ret_val = Vector{ 0.0,0.0,0.0 };
+VectorND ParticleManager::getNetForceOnParticle(const size_t particle_index) const {
+    VectorND ret_val = VectorND::Zero();
     for (size_t i = 0; i < particles.size(); i++) {
         if (i == particle_index) continue;
         ret_val += getForceGravityOnParticleAFromB(particles[particle_index], particles[i]);
@@ -358,12 +360,12 @@ Vector ParticleManager::getNetForceOnParticle(const size_t particle_index) const
     return ret_val;
 }
 
-Vector ParticleManager::getNetAccelerationOnParticle(const size_t particle_index) const {
+VectorND ParticleManager::getNetAccelerationOnParticle(const size_t particle_index) const {
     return getNetForceOnParticle(particle_index) / particles[particle_index].mass;
 }
 
-void ParticleManager::add(double mass, Vector pos, Vector vel, Vector acc) {
-    getOneVector();
+void ParticleManager::add(double mass, VectorND pos, VectorND vel, VectorND acc) {
+    //getOneVector(); wtf was this?????
     Particle p;
     p.position = pos;
     p.velocity = vel;
@@ -402,21 +404,33 @@ void ParticleManager::update(double dt, size_t integration_method) {
     };
 }
 
-glm::vec3 translateToScreenSpace(const Particle& p) {
-    glm::vec3 ret_val = glm::vec3{ 0.0f, 0.0f, 0.0f };
-    if (p.position.length() >= 3) {
-        ret_val.x = static_cast<float>(p.position[0]);
-        ret_val.y = static_cast<float>(p.position[1]);
-        ret_val.z = static_cast<float>(p.position[2]);
+inline glm::vec3 translateToScreenSpace(const Particle& p) {
+    switch (VECTOR_SPACE_NUMBER_OF_DIMENSIONS) {
+    case 0:
+        return glm::vec3{ 0.0f, 0.0f, 0.0f };
+    case 1:
+        return glm::vec3{
+            static_cast<float>(p.position[0]),
+            0.0f,
+            0.0f};
+    case 2:
+        return glm::vec3{
+            static_cast<float>(p.position[0]),
+            static_cast<float>(p.position[1]),
+            0.0f};
+    case 3:
+        return glm::vec3{
+            static_cast<float>(p.position[0]),
+            static_cast<float>(p.position[1]),
+            static_cast<float>(p.position[2])};
+    default:
+        // TODO: FIGURE OUT WHAT TO DO IN THE N > 3 CASE
+        return glm::vec3{
+            static_cast<float>(p.position[0]),
+            static_cast<float>(p.position[1]),
+            static_cast<float>(p.position[2]) };
     }
-    if (p.position.length() == 2) {
-        ret_val.x = static_cast<float>(p.position[0]);
-        ret_val.y = static_cast<float>(p.position[1]);
-    }
-    if (p.position.length() == 1) {
-        ret_val.x = static_cast<float>(p.position[0]);
-    }
-    return ret_val;
+
 }
 
 
@@ -480,13 +494,13 @@ void ParticleManager::updateAndResolveCollisions(double dt, const size_t integra
 #if 1
                     Particle& A = particles[i];
                     Particle& B = particles[j];
-                    Vector relative_position_AB = A.position - B.position;
+                    VectorND relative_position_AB = A.position - B.position;
                     double radii_sum = A.radius + B.radius;
                     double radii_sum_sqrd = radii_sum * radii_sum;
-                    double distance_between_centers_sqrd = glm::dot(relative_position_AB, relative_position_AB);
+                    double distance_between_centers_sqrd = relative_position_AB.dot(relative_position_AB);
                     double distance_between_centers = sqrt(distance_between_centers_sqrd);
-                    Vector relative_velocity_AB = A.velocity - B.velocity;
-                    is_collision_resolution_needed = (bool)(glm::dot(relative_position_AB, relative_velocity_AB) < 0.0);
+                    VectorND relative_velocity_AB = A.velocity - B.velocity;
+                    is_collision_resolution_needed = (bool)(relative_position_AB.dot(relative_velocity_AB) < 0.0);
 #endif
                     if (distance_between_centers_sqrd < radii_sum_sqrd) {
                         if (!avoid_displacement || is_collision_resolution_needed) {
@@ -530,15 +544,15 @@ void ParticleManager::updateAndResolveCollisions(double dt, const size_t integra
             if (!avoid_displacement) {
                 Particle& A = particles[index_A];
                 Particle& B = particles[index_B];
-                Vector relative_position_AB = A.position - B.position;
-                Vector relative_velocity_AB = A.velocity - B.velocity;
+                VectorND relative_position_AB = A.position - B.position;
+                VectorND relative_velocity_AB = A.velocity - B.velocity;
 
                 double radii_sum = A.radius + B.radius;
                 double radii_sum_sqrd = radii_sum * radii_sum;
-                double distance_between_centers_sqrd = glm::dot(relative_position_AB, relative_position_AB);
+                double distance_between_centers_sqrd = relative_position_AB.dot(relative_position_AB);
                 double distance_between_centers = sqrt(distance_between_centers_sqrd);
 
-                Vector normal = relative_position_AB / distance_between_centers;
+                VectorND normal = relative_position_AB / distance_between_centers;
                 A.position += 0.5 * (radii_sum - distance_between_centers) * normal;
                 B.position -= 0.5 * (radii_sum - distance_between_centers) * normal;
             }
@@ -552,21 +566,21 @@ void ParticleManager::updateAndResolveCollisions(double dt, const size_t integra
 #if 1
             Particle& A = particles[index_A];
             Particle& B = particles[index_B];
-            Vector relative_position_AB = A.position - B.position;
+            VectorND relative_position_AB = A.position - B.position;
 
             double radii_sum = A.radius + B.radius;
             double radii_sum_sqrd = radii_sum * radii_sum;
-            double distance_between_centers_sqrd = glm::dot(relative_position_AB, relative_position_AB);
+            double distance_between_centers_sqrd = relative_position_AB.dot(relative_position_AB);
             double distance_between_centers = sqrt(distance_between_centers_sqrd);
 
             if (distance_between_centers_sqrd <= radii_sum_sqrd) {
-                Vector relative_velocity_AB = A.velocity - B.velocity;
+                VectorND relative_velocity_AB = A.velocity - B.velocity;
                 if (!avoid_displacement && distance_between_centers_sqrd < radii_sum_sqrd) {
-                    Vector normal = relative_position_AB / distance_between_centers;
+                    VectorND normal = relative_position_AB / distance_between_centers;
                     A.position += 0.5 * (radii_sum - distance_between_centers) * normal;
                     B.position -= 0.5 * (radii_sum - distance_between_centers) * normal;
                 }
-                assert(glm::dot(relative_position_AB, relative_velocity_AB) <= 0.0);
+                assert(relative_position_AB.dot(relative_velocity_AB) <= 0.0);
                 doCollision(particles[index_A], particles[index_B]); // TODO MAKE THIS WORK FOR MORE THAN ONE COLLISION EVENT
             }
 #endif
@@ -578,3 +592,6 @@ void ParticleManager::updateAndResolveCollisions(double dt, const size_t integra
         }
     }
 }
+
+
+#endif

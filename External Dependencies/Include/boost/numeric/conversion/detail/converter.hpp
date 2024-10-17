@@ -453,7 +453,7 @@ namespace boost { namespace numeric { namespace convdetail
   struct trivial_converter_impl : public dummy_range_checker<Traits>
   {
     typedef Traits traits ;
-
+    
     typedef typename Traits::source_type   source_type   ;
     typedef typename Traits::argument_type argument_type ;
     typedef typename Traits::result_type   result_type   ;
@@ -561,7 +561,7 @@ namespace boost { namespace numeric { namespace convdetail
           >
   struct get_converter_impl
   {
-#if BOOST_WORKAROUND(__BORLANDC__, BOOST_TESTED_AT( 0x0561 ) )
+#if BOOST_WORKAROUND(BOOST_BORLANDC, BOOST_TESTED_AT( 0x0561 ) )
     // bcc55 prefers sometimes template parameters to be explicit local types.
     // (notice that is is illegal to reuse the names like this)
     typedef Traits           Traits ;

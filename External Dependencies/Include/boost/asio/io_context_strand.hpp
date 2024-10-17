@@ -2,7 +2,7 @@
 // io_context_strand.hpp
 // ~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2017 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2023 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -17,7 +17,8 @@
 
 #include <boost/asio/detail/config.hpp>
 
-#if !defined(BOOST_ASIO_NO_EXTENSIONS)
+#if !defined(BOOST_ASIO_NO_EXTENSIONS) \
+  && !defined(BOOST_ASIO_NO_TS_EXECUTORS)
 
 #include <boost/asio/async_result.hpp>
 #include <boost/asio/detail/handler_type_requirements.hpp>
@@ -64,8 +65,7 @@ namespace asio {
  * @li @c s.dispatch(a) happens-before @c s.dispatch(b), where both are
  * performed outside the strand
  *   
- * then @c asio_handler_invoke(a1, &a1) happens-before
- * @c asio_handler_invoke(b1, &b1).
+ * then @c a() happens-before @c b()
  * 
  * Note that in the following case:
  * @code async_op_1(..., s.wrap(a));
@@ -88,6 +88,12 @@ namespace asio {
  */
 class io_context::strand
 {
+private:
+#if !defined(BOOST_ASIO_NO_DEPRECATED)
+  struct initiate_dispatch;
+  struct initiate_post;
+#endif // !defined(BOOST_ASIO_NO_DEPRECATED)
+
 public:
   /// Constructor.
   /**
@@ -114,38 +120,8 @@ public:
   {
   }
 
-#if !defined(BOOST_ASIO_NO_DEPRECATED)
-  /// (Deprecated: Use context().) Get the io_context associated with the
-  /// strand.
-  /**
-   * This function may be used to obtain the io_context object that the strand
-   * uses to dispatch handlers for asynchronous operations.
-   *
-   * @return A reference to the io_context object that the strand will use to
-   * dispatch handlers. Ownership is not transferred to the caller.
-   */
-  boost::asio::io_context& get_io_context()
-  {
-    return service_.get_io_context();
-  }
-
-  /// (Deprecated: Use context().) Get the io_context associated with the
-  /// strand.
-  /**
-   * This function may be used to obtain the io_context object that the strand
-   * uses to dispatch handlers for asynchronous operations.
-   *
-   * @return A reference to the io_context object that the strand will use to
-   * dispatch handlers. Ownership is not transferred to the caller.
-   */
-  boost::asio::io_context& get_io_service()
-  {
-    return service_.get_io_context();
-  }
-#endif // !defined(BOOST_ASIO_NO_DEPRECATED)
-
   /// Obtain the underlying execution context.
-  boost::asio::io_context& context() const BOOST_ASIO_NOEXCEPT
+  boost::asio::io_context& context() const noexcept
   {
     return service_.get_io_context();
   }
@@ -154,7 +130,7 @@ public:
   /**
    * The strand delegates this call to its underlying io_context.
    */
-  void on_work_started() const BOOST_ASIO_NOEXCEPT
+  void on_work_started() const noexcept
   {
     context().get_executor().on_work_started();
   }
@@ -163,7 +139,7 @@ public:
   /**
    * The strand delegates this call to its underlying io_context.
    */
-  void on_work_finished() const BOOST_ASIO_NOEXCEPT
+  void on_work_finished() const noexcept
   {
     context().get_executor().on_work_finished();
   }
@@ -184,9 +160,9 @@ public:
    * internal storage needed for function invocation.
    */
   template <typename Function, typename Allocator>
-  void dispatch(BOOST_ASIO_MOVE_ARG(Function) f, const Allocator& a) const
+  void dispatch(Function&& f, const Allocator& a) const
   {
-    typename decay<Function>::type tmp(BOOST_ASIO_MOVE_CAST(Function)(f));
+    decay_t<Function> tmp(static_cast<Function&&>(f));
     service_.dispatch(impl_, tmp);
     (void)a;
   }
@@ -212,19 +188,14 @@ public:
    * handler object as required. The function signature of the handler must be:
    * @code void handler(); @endcode
    */
-  template <typename CompletionHandler>
-  BOOST_ASIO_INITFN_RESULT_TYPE(CompletionHandler, void ())
-  dispatch(BOOST_ASIO_MOVE_ARG(CompletionHandler) handler)
+  template <typename LegacyCompletionHandler>
+  auto dispatch(LegacyCompletionHandler&& handler)
+    -> decltype(
+      async_initiate<LegacyCompletionHandler, void ()>(
+        declval<initiate_dispatch>(), handler, this))
   {
-    // If you get an error on the following line it means that your handler does
-    // not meet the documented type requirements for a CompletionHandler.
-    BOOST_ASIO_COMPLETION_HANDLER_CHECK(CompletionHandler, handler) type_check;
-
-    async_completion<CompletionHandler, void ()> init(handler);
-
-    service_.dispatch(impl_, init.completion_handler);
-
-    return init.result.get();
+    return async_initiate<LegacyCompletionHandler, void ()>(
+        initiate_dispatch(), handler, this);
   }
 #endif // !defined(BOOST_ASIO_NO_DEPRECATED)
 
@@ -242,9 +213,9 @@ public:
    * internal storage needed for function invocation.
    */
   template <typename Function, typename Allocator>
-  void post(BOOST_ASIO_MOVE_ARG(Function) f, const Allocator& a) const
+  void post(Function&& f, const Allocator& a) const
   {
-    typename decay<Function>::type tmp(BOOST_ASIO_MOVE_CAST(Function)(f));
+    decay_t<Function> tmp(static_cast<Function&&>(f));
     service_.post(impl_, tmp);
     (void)a;
   }
@@ -266,19 +237,14 @@ public:
    * handler object as required. The function signature of the handler must be:
    * @code void handler(); @endcode
    */
-  template <typename CompletionHandler>
-  BOOST_ASIO_INITFN_RESULT_TYPE(CompletionHandler, void ())
-  post(BOOST_ASIO_MOVE_ARG(CompletionHandler) handler)
+  template <typename LegacyCompletionHandler>
+  auto post(LegacyCompletionHandler&& handler)
+    -> decltype(
+      async_initiate<LegacyCompletionHandler, void ()>(
+        declval<initiate_post>(), handler, this))
   {
-    // If you get an error on the following line it means that your handler does
-    // not meet the documented type requirements for a CompletionHandler.
-    BOOST_ASIO_COMPLETION_HANDLER_CHECK(CompletionHandler, handler) type_check;
-
-    async_completion<CompletionHandler, void ()> init(handler);
-
-    service_.post(impl_, init.completion_handler);
-
-    return init.result.get();
+    return async_initiate<LegacyCompletionHandler, void ()>(
+        initiate_post(), handler, this);
   }
 #endif // !defined(BOOST_ASIO_NO_DEPRECATED)
 
@@ -296,9 +262,9 @@ public:
    * internal storage needed for function invocation.
    */
   template <typename Function, typename Allocator>
-  void defer(BOOST_ASIO_MOVE_ARG(Function) f, const Allocator& a) const
+  void defer(Function&& f, const Allocator& a) const
   {
-    typename decay<Function>::type tmp(BOOST_ASIO_MOVE_CAST(Function)(f));
+    decay_t<Function> tmp(static_cast<Function&&>(f));
     service_.post(impl_, tmp);
     (void)a;
   }
@@ -344,7 +310,7 @@ public:
    * submitted to the strand using post(), dispatch() or wrap(). Otherwise
    * returns @c false.
    */
-  bool running_in_this_thread() const BOOST_ASIO_NOEXCEPT
+  bool running_in_this_thread() const noexcept
   {
     return service_.running_in_this_thread(impl_);
   }
@@ -354,7 +320,7 @@ public:
    * Two strands are equal if they refer to the same ordered, non-concurrent
    * state.
    */
-  friend bool operator==(const strand& a, const strand& b) BOOST_ASIO_NOEXCEPT
+  friend bool operator==(const strand& a, const strand& b) noexcept
   {
     return a.impl_ == b.impl_;
   }
@@ -364,12 +330,48 @@ public:
    * Two strands are equal if they refer to the same ordered, non-concurrent
    * state.
    */
-  friend bool operator!=(const strand& a, const strand& b) BOOST_ASIO_NOEXCEPT
+  friend bool operator!=(const strand& a, const strand& b) noexcept
   {
     return a.impl_ != b.impl_;
   }
 
 private:
+#if !defined(BOOST_ASIO_NO_DEPRECATED)
+  struct initiate_dispatch
+  {
+    template <typename LegacyCompletionHandler>
+    void operator()(LegacyCompletionHandler&& handler,
+        strand* self) const
+    {
+      // If you get an error on the following line it means that your
+      // handler does not meet the documented type requirements for a
+      // LegacyCompletionHandler.
+      BOOST_ASIO_LEGACY_COMPLETION_HANDLER_CHECK(
+          LegacyCompletionHandler, handler) type_check;
+
+      detail::non_const_lvalue<LegacyCompletionHandler> handler2(handler);
+      self->service_.dispatch(self->impl_, handler2.value);
+    }
+  };
+
+  struct initiate_post
+  {
+    template <typename LegacyCompletionHandler>
+    void operator()(LegacyCompletionHandler&& handler,
+        strand* self) const
+    {
+      // If you get an error on the following line it means that your
+      // handler does not meet the documented type requirements for a
+      // LegacyCompletionHandler.
+      BOOST_ASIO_LEGACY_COMPLETION_HANDLER_CHECK(
+          LegacyCompletionHandler, handler) type_check;
+
+      detail::non_const_lvalue<LegacyCompletionHandler> handler2(handler);
+      self->service_.post(self->impl_, handler2.value);
+    }
+  };
+#endif // !defined(BOOST_ASIO_NO_DEPRECATED)
+
   boost::asio::detail::strand_service& service_;
   mutable boost::asio::detail::strand_service::implementation_type impl_;
 };
@@ -380,5 +382,6 @@ private:
 #include <boost/asio/detail/pop_options.hpp>
 
 #endif // !defined(BOOST_ASIO_NO_EXTENSIONS)
+       //   && !defined(BOOST_ASIO_NO_TS_EXECUTORS)
 
 #endif // BOOST_ASIO_IO_CONTEXT_STRAND_HPP

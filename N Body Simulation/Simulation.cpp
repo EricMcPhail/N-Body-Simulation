@@ -1,3 +1,5 @@
+#if 0
+
 #include "Simulation.hpp"
 #include "Camera.hpp"
 #include "Model.hpp"
@@ -6,6 +8,8 @@
 #include "ThreadPool.hpp"
 #include "Particle.hpp"
 #include "TextRenderer.hpp"
+#include "VectorSpace.hpp"
+
 
 
 #include <glad/glad.h>
@@ -249,9 +253,9 @@ void Simulation::startMultiThreaded() {
 #endif
 
 void Simulation::startSingleThreaded() {
-    pm->add(std::numeric_limits<double>::infinity(), Vector{ -5.0, 0.0,0.0 });
-    pm->add(1.0, Vector{5.0,0.0,0.0});
-    pm->add(1000000.0, Vector{ 15.0,0.0,0.0 }, Vector{-1.0, 0.0, 0.0});
+    pm->add(std::numeric_limits<double>::infinity(), VectorND{ -5.0, 0.0,0.0 });
+    pm->add(1.0, VectorND{5.0,0.0,0.0});
+    pm->add(1000000.0, VectorND{ 15.0,0.0,0.0 }, VectorND{-1.0, 0.0, 0.0});
     
 
 #if DRAW_DEBUG_DATA_IN_WINDOW
@@ -419,3 +423,5 @@ void Simulation::loadDefaultParticleModel() {
     current_particle_model = new Model(1.0, 12);
     pm = new ParticleManager();
 }
+
+#endif

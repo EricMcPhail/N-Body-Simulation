@@ -53,7 +53,7 @@ struct promise_base {
     }
 
     ~promise_base() {
-        if ( future_) {
+        if ( future_ && obtained_) {
             future_->owner_destroyed();
         }
     }
@@ -117,7 +117,7 @@ public:
     promise( promise const&) = delete;
     promise & operator=( promise const&) = delete;
 
-    promise( promise && other) noexcept = default;
+    promise( promise && other) = default;
     promise & operator=( promise && other) = default;
 
     void set_value( R const& value) {
@@ -158,8 +158,8 @@ public:
     promise( promise const&) = delete;
     promise & operator=( promise const&) = delete;
 
-    promise( promise && other) noexcept = default;
-    promise & operator=( promise && other) noexcept = default;
+    promise( promise && other) = default;
+    promise & operator=( promise && other) = default;
 
     void set_value( R & value) {
         if ( BOOST_UNLIKELY( ! base_type::future_) ) {
@@ -192,8 +192,8 @@ public:
     promise( promise const&) = delete;
     promise & operator=( promise const&) = delete;
 
-    promise( promise && other) noexcept = default;
-    promise & operator=( promise && other) noexcept = default;
+    promise( promise && other)  = default;
+    promise & operator=( promise && other) = default;
 
     inline
     void set_value() {

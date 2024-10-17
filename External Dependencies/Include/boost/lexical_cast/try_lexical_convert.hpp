@@ -1,6 +1,6 @@
 // Copyright Kevlin Henney, 2000-2005.
 // Copyright Alexander Nasonov, 2006-2010.
-// Copyright Antony Polukhin, 2011-2016.
+// Copyright Antony Polukhin, 2011-2023.
 //
 // Distributed under the Boost Software License, Version 1.0. (See
 // accompanying file LICENSE_1_0.txt or copy at
@@ -28,20 +28,22 @@
     (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)))
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wuninitialized"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
 #endif
 
+
 #include <string>
-#include <boost/mpl/bool.hpp>
-#include <boost/mpl/identity.hpp>
-#include <boost/mpl/if.hpp>
+#include <boost/type_traits/is_integral.hpp>
+#include <boost/type_traits/type_identity.hpp>
+#include <boost/type_traits/conditional.hpp>
 #include <boost/type_traits/is_same.hpp>
 #include <boost/type_traits/is_arithmetic.hpp>
 
+#include <boost/lexical_cast/detail/buffer_view.hpp>
 #include <boost/lexical_cast/detail/is_character.hpp>
 #include <boost/lexical_cast/detail/converter_numeric.hpp>
 #include <boost/lexical_cast/detail/converter_lexical.hpp>
 
-#include <boost/range/iterator_range_core.hpp>
 #include <boost/container/container_fwd.hpp>
 
 namespace boost {
@@ -72,32 +74,34 @@ namespace boost {
         template<typename Target, typename Source>
         struct is_arithmetic_and_not_xchars
         {
-            typedef boost::mpl::bool_<
-                    !(boost::detail::is_character<Target>::value) &&
+            typedef boost::integral_constant<
+                bool,
+                !(boost::detail::is_character<Target>::value) &&
                     !(boost::detail::is_character<Source>::value) &&
                     boost::is_arithmetic<Source>::value &&
                     boost::is_arithmetic<Target>::value
                 > type;
-        
+
             BOOST_STATIC_CONSTANT(bool, value = (
                 type::value
             ));
         };
 
         /*
-         * is_xchar_to_xchar<Target, Source>::value is true, 
+         * is_xchar_to_xchar<Target, Source>::value is true,
          * Target and Souce are char types of the same size 1 (char, signed char, unsigned char).
          */
         template<typename Target, typename Source>
-        struct is_xchar_to_xchar 
+        struct is_xchar_to_xchar
         {
-            typedef boost::mpl::bool_<
-                     sizeof(Source) == sizeof(Target) &&
+            typedef boost::integral_constant<
+                bool,
+                sizeof(Source) == sizeof(Target) &&
                      sizeof(Source) == sizeof(char) &&
                      boost::detail::is_character<Target>::value &&
                      boost::detail::is_character<Source>::value
                 > type;
-                
+
             BOOST_STATIC_CONSTANT(bool, value = (
                 type::value
             ));
@@ -160,9 +164,10 @@ namespace boost {
         template <typename Target, typename Source>
         inline bool try_lexical_convert(const Source& arg, Target& result)
         {
-            typedef BOOST_DEDUCED_TYPENAME boost::detail::array_to_pointer_decay<Source>::type src;
+            typedef typename boost::detail::array_to_pointer_decay<Source>::type src;
 
-            typedef boost::mpl::bool_<
+            typedef boost::integral_constant<
+                bool,
                 boost::detail::is_xchar_to_xchar<Target, src >::value ||
                 boost::detail::is_char_array_to_stdstring<Target, src >::value ||
                 boost::detail::is_char_array_to_booststring<Target, src >::value ||
@@ -181,17 +186,17 @@ namespace boost {
 
             // We do evaluate second `if_` lazily to avoid unnecessary instantiations
             // of `shall_we_copy_with_dynamic_check_t` and improve compilation times.
-            typedef BOOST_DEDUCED_TYPENAME boost::mpl::if_c<
+            typedef typename boost::conditional<
                 shall_we_copy_t::value,
-                boost::mpl::identity<boost::detail::copy_converter_impl<Target, src > >,
-                boost::mpl::if_<
-                     shall_we_copy_with_dynamic_check_t,
+                boost::type_identity<boost::detail::copy_converter_impl<Target, src > >,
+                boost::conditional<
+                     shall_we_copy_with_dynamic_check_t::value,
                      boost::detail::dynamic_num_converter_impl<Target, src >,
                      boost::detail::lexical_converter_impl<Target, src >
                 >
             >::type caster_type_lazy;
 
-            typedef BOOST_DEDUCED_TYPENAME caster_type_lazy::type caster_type;
+            typedef typename caster_type_lazy::type caster_type;
 
             return caster_type::try_convert(arg, result);
         }
@@ -199,12 +204,13 @@ namespace boost {
         template <typename Target, typename CharacterT>
         inline bool try_lexical_convert(const CharacterT* chars, std::size_t count, Target& result)
         {
-            BOOST_STATIC_ASSERT_MSG(
+            static_assert(
                 boost::detail::is_character<CharacterT>::value,
                 "This overload of try_lexical_convert is meant to be used only with arrays of characters."
             );
             return ::boost::conversion::detail::try_lexical_convert(
-                ::boost::iterator_range<const CharacterT*>(chars, chars + count), result
+                ::boost::conversion::detail::make_buffer_view(chars, chars + count),
+                result
             );
         }
 

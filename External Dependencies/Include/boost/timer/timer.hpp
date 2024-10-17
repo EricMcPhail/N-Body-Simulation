@@ -8,10 +8,7 @@
 #ifndef BOOST_TIMER_TIMER_HPP                  
 #define BOOST_TIMER_TIMER_HPP
 
-#include <boost/config/warning_disable.hpp>
-
 #include <boost/timer/config.hpp>
-//#include <boost/chrono/chrono.hpp>
 #include <boost/cstdint.hpp>
 #include <string>
 #include <cstring>

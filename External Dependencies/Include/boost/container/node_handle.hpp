@@ -30,7 +30,8 @@
 #include <boost/move/utility_core.hpp>
 #include <boost/move/adl_move_swap.hpp>
 
-#include <boost/type_traits/aligned_storage.hpp>
+#include <boost/container/detail/mpl.hpp>
+#include <boost/assert.hpp>
 
 
 //!\file
@@ -111,19 +112,20 @@ class node_handle
    BOOST_MOVABLE_BUT_NOT_COPYABLE(node_handle)
 
    typedef typename nator_traits::pointer                         node_pointer;
-   typedef ::boost::aligned_storage
+   typedef typename dtl::aligned_storage
       < sizeof(nallocator_type)
-      , boost::alignment_of<nallocator_type>::value>              nalloc_storage_t;
+      , dtl::alignment_of<nallocator_type>::value
+      >::type                                                     nalloc_storage_t;
 
    node_pointer      m_ptr;
    nalloc_storage_t  m_nalloc_storage;
 
    void move_construct_alloc(nallocator_type &al)
-   {  ::new(m_nalloc_storage.address(), boost_container_new_t()) nallocator_type(::boost::move(al));   }
+   {  ::new((void*)m_nalloc_storage.data, boost_container_new_t()) nallocator_type(::boost::move(al));   }
 
    void destroy_deallocate_node()
    {
-      nator_traits::destroy(this->node_alloc(), boost::movelib::to_raw_pointer(m_ptr));
+      boost::movelib::to_raw_pointer(m_ptr)->destructor(this->node_alloc());
       nator_traits::deallocate(this->node_alloc(), m_ptr, 1u);
    }
 
@@ -131,7 +133,7 @@ class node_handle
    void move_construct_end(OtherNodeHandle &nh)
    {
       if(m_ptr){
-         ::new (m_nalloc_storage.address(), boost_container_new_t()) nallocator_type(::boost::move(nh.node_alloc()));
+         ::new ((void*)m_nalloc_storage.data, boost_container_new_t()) nallocator_type(::boost::move(nh.node_alloc()));
          node_handle_friend::destroy_alloc(nh);
          node_handle_friend::get_node_pointer(nh) = node_pointer();
       }
@@ -139,7 +141,7 @@ class node_handle
    }
 
    void destroy_alloc() BOOST_NOEXCEPT
-   {  static_cast<nallocator_type*>(m_nalloc_storage.address())->~nallocator_type();  }
+   {  static_cast<nallocator_type*>((void*)m_nalloc_storage.data)->~nallocator_type();  }
 
    node_pointer &get_node_pointer() BOOST_NOEXCEPT
    {  return m_ptr;  }
@@ -160,7 +162,7 @@ class node_handle
       :  m_ptr(p)
    {
       if(m_ptr){
-         ::new (m_nalloc_storage.address(), boost_container_new_t()) nallocator_type(al);
+         ::new ((void*)m_nalloc_storage.data, boost_container_new_t()) nallocator_type(al);
       }
    }
 
@@ -174,9 +176,9 @@ class node_handle
    //!   of a node handle is void.
    template<class KeyMapped2>
    node_handle( BOOST_RV_REF_BEG node_handle<NodeAllocator, KeyMapped2> BOOST_RV_REF_END nh
-               , typename container_detail::enable_if_c
-                  < ((unsigned)container_detail::is_same<KeyMapped,  void>::value +
-                     (unsigned)container_detail::is_same<KeyMapped2, void>::value) == 1u
+               , typename dtl::enable_if_c
+                  < ((unsigned)dtl::is_same<KeyMapped,  void>::value +
+                     (unsigned)dtl::is_same<KeyMapped2, void>::value) == 1u
                   >::type* = 0) BOOST_NOEXCEPT
       :  m_ptr(nh.get())
    {  this->move_construct_end(nh);  }
@@ -250,7 +252,7 @@ class node_handle
    //! <b>Throws</b>: Nothing.
    value_type& value() const BOOST_NOEXCEPT
    {
-      BOOST_STATIC_ASSERT((container_detail::is_same<KeyMapped, void>::value));
+      BOOST_STATIC_ASSERT((dtl::is_same<KeyMapped, void>::value));
       BOOST_ASSERT(!empty());
       return m_ptr->get_data();
    }
@@ -265,7 +267,7 @@ class node_handle
    //! <b>Requires</b>: Modifying the key through the returned reference is permitted.
    key_type& key() const BOOST_NOEXCEPT
    {
-      BOOST_STATIC_ASSERT((!container_detail::is_same<KeyMapped, void>::value));
+      BOOST_STATIC_ASSERT((!dtl::is_same<KeyMapped, void>::value));
       BOOST_ASSERT(!empty());
       return const_cast<key_type &>(KeyMapped().key_of_value(m_ptr->get_data()));
    }
@@ -278,7 +280,7 @@ class node_handle
    //! <b>Throws</b>: Nothing.
    mapped_type& mapped() const BOOST_NOEXCEPT
    {
-      BOOST_STATIC_ASSERT((!container_detail::is_same<KeyMapped, void>::value));
+      BOOST_STATIC_ASSERT((!dtl::is_same<KeyMapped, void>::value));
       BOOST_ASSERT(!empty());
       return KeyMapped().mapped_of_value(m_ptr->get_data());
    }
@@ -373,7 +375,7 @@ class node_handle
    nallocator_type &node_alloc() BOOST_NOEXCEPT
    {
       BOOST_ASSERT(!empty());
-      return *static_cast<nallocator_type*>(m_nalloc_storage.address());
+      return *static_cast<nallocator_type*>((void*)m_nalloc_storage.data);
    }
 
 
@@ -383,7 +385,7 @@ class node_handle
    const nallocator_type &node_alloc() const BOOST_NOEXCEPT
    {
       BOOST_ASSERT(!empty());
-      return *static_cast<const nallocator_type*>(m_nalloc_storage.address());
+      return *static_cast<const nallocator_type*>((const void*)m_nalloc_storage.data);
    }
 
    //! <b>Effects</b>: x.swap(y).
@@ -418,8 +420,8 @@ struct insert_return_type_base
    {}
 
    template<class RelatedIt, class RelatedNode>
-   insert_return_type_base(bool insert, RelatedIt it, BOOST_RV_REF(RelatedNode) node)
-      : inserted(insert), position(it), node(boost::move(node))
+   insert_return_type_base(bool insert, RelatedIt it, BOOST_RV_REF(RelatedNode) n)
+      : inserted(insert), position(it), node(boost::move(n))
    {}
 
    insert_return_type_base & operator=(BOOST_RV_REF(insert_return_type_base) other)

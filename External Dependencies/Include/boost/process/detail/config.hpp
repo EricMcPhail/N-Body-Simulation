@@ -21,7 +21,9 @@
 #include <system_error>
 #include <boost/system/api_config.hpp>
 
+#include <boost/throw_exception.hpp>
 #include <boost/process/exception.hpp>
+#include <boost/assert/source_location.hpp>
 
 #if defined(BOOST_POSIX_API)
 #include <errno.h>
@@ -57,6 +59,10 @@ inline std::error_code get_last_error() noexcept
 #define BOOST_POSIX_HAS_VFORK 1
 #endif
 
+#if (_POSIX_C_SOURCE >= 199309L)
+#define BOOST_POSIX_HAS_SIGTIMEDWAIT 1
+#endif
+
 #elif defined(BOOST_WINDOWS_API)
 namespace windows {namespace extensions {}}
 namespace api = windows;
@@ -67,21 +73,34 @@ inline std::error_code get_last_error() noexcept
 }
 #endif
 
-inline void throw_last_error(const std::string & msg)
+inline void throw_last_error(const std::string & msg, boost::source_location const & loc = boost::source_location())
 {
-    throw process_error(get_last_error(), msg);
+    boost::throw_exception(process_error(get_last_error(), msg), loc);
 }
 
-inline void throw_last_error(const char * msg)
+inline void throw_last_error(const char * msg, boost::source_location const & loc = boost::source_location())
 {
-    throw process_error(get_last_error(), msg);
+    boost::throw_exception(process_error(get_last_error(), msg), loc);
 }
 
-inline void throw_last_error()
+inline void throw_last_error(boost::source_location const & loc = boost::source_location())
 {
-    throw process_error(get_last_error());
+    boost::throw_exception(process_error(get_last_error()), loc);
 }
 
+inline void throw_error(const std::error_code& ec,
+                        boost::source_location const & loc = boost::source_location())
+{
+    if (ec)
+        boost::throw_exception(process_error(ec), loc);
+}
+
+inline void throw_error(const std::error_code& ec, const char* msg,
+                        boost::source_location const & loc = boost::source_location())
+{
+    if (ec)
+        boost::throw_exception(process_error(ec, msg), loc);
+}
 
 template<typename Char> constexpr Char null_char();
 template<> constexpr char     null_char<char>     (){return   '\0';}
@@ -99,6 +118,8 @@ template<typename Char> constexpr Char space_sign();
 template<> constexpr char     space_sign<char>    () {return  ' '; }
 template<> constexpr wchar_t  space_sign<wchar_t> () {return L' '; }
 
+}
+}
+}
 
-}}}
 #endif
