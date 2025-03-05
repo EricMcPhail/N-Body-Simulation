@@ -1,5 +1,3 @@
-
-#if 0
 #include "TextRenderer.hpp"
 #include "Shader.hpp"
 #include <iostream>
@@ -179,4 +177,3 @@ void TextRenderer::RenderText(std::string text, float x, float y, float scale, g
     }
     glBlendFunc(GL_ONE, GL_ZERO); // Unessisary but i like to reset to default value
 }
-#endif

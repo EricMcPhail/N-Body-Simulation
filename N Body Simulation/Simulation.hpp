@@ -20,7 +20,7 @@ public:
     std::chrono::time_point<std::chrono::high_resolution_clock> tick_start_time_nanoseconds;
     std::chrono::time_point<std::chrono::high_resolution_clock> tick_end_time_nanoseconds;
     //std::chrono::duration<long long, std::nano> tick_delta_time_nanoseconds;
-    const size_t target_framerate = 120;
+    const size_t target_framerate = 300;
 
 
     ParticleManager* pm;
@@ -44,7 +44,7 @@ public:
 
 
 
-    const double physics_timestep = 0.01;
+    const double physics_timestep = 0.05;
 
     //std::mutex m;
     //const std::lock_guard<std::mutex> lock(m);

@@ -1,11 +1,8 @@
-#if 0
-
 #include "Simulation.hpp"
 #include "Camera.hpp"
 #include "Model.hpp"
 #include "Shader.hpp"
 #include "ParticleManager.hpp"
-#include "ThreadPool.hpp"
 #include "Particle.hpp"
 #include "TextRenderer.hpp"
 #include "VectorSpace.hpp"
@@ -137,7 +134,6 @@ Simulation::Simulation() {
 
 
     //----------------------------------------------------------------------------
-    thread_pool = new ThreadPool();
     shader = new Shader("vertex_shader.vs", "fragment_shader.fs");
     camera = new Camera(glm::vec3(0.0f, 0.0f, -25.0f), glm::vec3(0.0f, 1.0f, 0.0f), 90.0f, 0.0f);
     loadDefaultParticleModel();
@@ -148,39 +144,10 @@ Simulation::~Simulation() {
     delete camera;
     delete current_particle_model;
     delete pm;
-    delete thread_pool; // TODO MAKE SURE EVERYTHING IS DONE RUNNING
     glfwTerminate();
 }
 
-#if 0
-void Simulation::Init() {
-    ThreeBodyTest f;
 
-
-
-
-    std::vector<Circle*> circles;
-    float radius = 1.0f;
-    size_t num_tri = 25;
-    circles.push_back(new Circle{ radius, num_tri, temp_colours[0] });
-    for (size_t i = 0; i < f.integration_methods.size(); i++) {
-        circles.push_back(new Circle{ radius, num_tri, temp_colours[f.integration_methods[i] + 1] });
-    }
-
-
-
-
-
-    //std::vector<glm::mat4> m(f.exact_solution.particles.size());
-    ParticleManager pm;
-
-    pm.add(1.0, vec3{ -2.0, 0.0, 0.0 });
-    pm.add(1.0, vec3{ 2.0, 0.0, 0.0 });
-
-    CollisionEventManager cem = CollisionEventManager{ &pm };
-    double TE_init = cem.pm->getTotalEnergy();
-}
-#endif
 
 void Simulation::updateViewAndProjection() {
     // This should be run every time we want to update the frame
@@ -195,62 +162,6 @@ void Simulation::updateViewAndProjection() {
 void Simulation::updatePhysics(double delta_time) {
     pm->updateAndResolveCollisions(delta_time, 1);
 }
-
-#if 0
-void Simulation::startMultiThreaded() {
-    tick_end_time_nanoseconds = std::chrono::high_resolution_clock::now();
-
-    const size_t target_framerate = 120;
-    const double number_frames_between_physics_updates = target_framerate * physics_timestep;
-    const double target_frametime = 1.0 / target_framerate;
-    const double target_physicstime = 1.0 / number_frames_between_physics_updates;
-
-
-    thread_pool->Start();
-    thread_pool->QueueJob(std::bind(updatePhysics, *this, physics_timestep));
-
-    ctpl::thread_pool p(21);
-    std::vector<std::future<void>> results(4);
-    results[2] = p.push(std::bind(updatePhysics, this, physics_timestep));
-
- 
-    auto x = [this] { updatePhysics(physics_timestep); };
-    std::future<void> physics_update(x);
-
-
-
-    while (!glfwWindowShouldClose(window)) {
-        // per-frame time logic
-        // --------------------
-        tick_start_time_nanoseconds = std::chrono::high_resolution_clock::now();
-        const std::chrono::duration<long long, std::nano> tick_delta_time_nanoseconds = tick_start_time_nanoseconds - tick_end_time_nanoseconds;
-        tick_end_time_nanoseconds = tick_start_time_nanoseconds;
-        // Rest of the simulation loop
-        const std::chrono::duration<long double> tick_delta_time_seconds = tick_delta_time_nanoseconds;
-        const double delta_time = tick_delta_time_seconds.count();
-
-        // input
-        // -----
-        processInput(window);
-
-        // physics
-        // -------
-        updatePhysics(physics_timestep);
-        updateAllParticlesPositionDataInGPU(*current_particle_model);
-
-        // render
-        // ------
-        updateViewAndProjection();
-        drawAllParticles(*current_particle_model);
-
-        // ending stuff
-        // ------------
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-    }
-    thread_pool->Stop();
-}
-#endif
 
 void Simulation::startSingleThreaded() {
     pm->add(std::numeric_limits<double>::infinity(), VectorND{ -5.0, 0.0,0.0 });
@@ -303,6 +214,22 @@ void Simulation::startSingleThreaded() {
     const double target_frametime = 1.0 / target_framerate;
     const double number_frames_between_physics_updates = target_framerate * physics_timestep;
     const double target_physicstime = 1.0 / number_frames_between_physics_updates;
+    //----------------------------------------------------------------------------------------
+    // Throw rendering test code here cuz im fucking lazy
+
+
+
+
+
+
+
+
+
+
+
+
+
+    //---------------------------------------------------------------------------------------
     // Start of the actual game loop
     tick_end_time_nanoseconds = std::chrono::high_resolution_clock::now();
     while (!glfwWindowShouldClose(window)) {
@@ -376,6 +303,7 @@ void Simulation::startSingleThreaded() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         drawAllParticles(*current_particle_model);
+
 #if DRAW_DEBUG_DATA_IN_WINDOW
         tr.RenderText(std::format("FPS: {}", FPS), 0.1, 0.1, 0.25, glm::vec3{ 1.0f, 1.0f, 1.0f });
         tr.RenderText(std::format("input_delta_time_seconds_average: {}", input_delta_time_seconds_average), 0.1, 25, 0.25, glm::vec3{ 1.0f, 1.0f, 1.0f });
@@ -420,8 +348,7 @@ void Simulation::drawAllParticles(const Model &particle_model) const {
 }
 
 void Simulation::loadDefaultParticleModel() {
-    current_particle_model = new Model(1.0, 12);
+    current_particle_model = new Model(1,2,3,15,15,glm::vec3(1.0f,1.0f,1.0f));
     pm = new ParticleManager();
 }
 
-#endif

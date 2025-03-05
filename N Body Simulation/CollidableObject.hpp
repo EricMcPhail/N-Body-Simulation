@@ -1,10 +1,8 @@
 ﻿#pragma once
+#if 0
 #include <vector>
 #include "HyperSphereCollision.hpp"
 #include "VectorSpace.hpp"
-
-
-
 
 struct ConvexHull {
     VectorND verticies;
@@ -30,6 +28,11 @@ struct CollidableObject {
     CollisionResolutionData* crd;
 
 	double bounding_circle_radius;
+
+    /*
+    * collision_hull could be null, meaning it is just a primative shape like a sphere
+    * 
+    */
 	std::vector<ConvexHull> collision_hull;
     size_t collision_count = 0; // number of collision events for this object (used in a test to check no skipped collisions)
     bool is_collisions_enabled = true;
@@ -38,9 +41,10 @@ struct CollidableObject {
 	bool broadPhaseCollisionCheck(const CollidableObject& other, double& time_till_collision);
 	bool narrowPhaseCollisionCheck(const CollidableObject& other, double& time_till_collision);
 
-
     CollidableObjectPair** pairs;
 };
+
+
 
 
 #include <unordered_set>
@@ -317,3 +321,4 @@ void ParticleManager::updateAndResolveCollisions(double dt, const size_t integra
 }
 
 
+#endif

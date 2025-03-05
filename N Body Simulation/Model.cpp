@@ -1,4 +1,3 @@
-#if 0 
 #include "Model.hpp"
 #include "Shader.hpp"
 #include "Constants.hpp" // needed for pi
@@ -14,7 +13,12 @@ struct Vertex {
 
 Model::Model(float raduis , size_t number_of_triangles , const glm::vec3&  colour) {
     buildCircle(raduis, number_of_triangles, colour);
-    createBuffer();
+    createBuffer(false);
+}
+
+Model::Model(float a, float b, float c, size_t stacks, size_t slices, const glm::vec3& colour) {
+    buildEllipsoid(a, b, c, stacks, slices, colour);
+    createBuffer(true);
 }
 
 Model::~Model() {
@@ -23,41 +27,26 @@ Model::~Model() {
     glDeleteBuffers(1, &instance_vertex_buffer_object_ID);
 }
 
-void Model::buildCircle(float radius, size_t num_triangles, const glm::vec3& colour) {
-    assert(num_triangles >= 3);
-    const glm::vec3 center = glm::vec3{ 0.0, 0.0, 0.0 };
 
-    for (size_t i = 0; i < num_triangles; i++) {
-
-        vertices.push_back(Vertex{ center, colour });
-
-
-        float angle = ((float)i / (float)num_triangles) * (2.0 * PI);
-        float x = radius * cos(angle);
-        float y = radius * sin(angle);
-        float z = 0.0f;
-        vertices.push_back(Vertex{ glm::vec3{x, y, z}, colour });
-
-
-        angle = ((float)(i + 1) / (float)num_triangles) * (2.0 * PI);
-        x = radius * cos(angle);
-        y = radius * sin(angle);
-        z = 0.0f;
-
-        vertices.push_back(Vertex{ glm::vec3{x, y, z}, colour });
-    }
-}
-
-void Model::createBuffer() {
+void Model::createBuffer(bool add_element_buffer) {
     glGenVertexArrays(1, &vertex_array_object_ID);
     glGenBuffers(1, &vertex_buffer_object_ID);
+    if (add_element_buffer) glGenBuffers(1, &element_buffer_object_ID);
     glGenBuffers(1, &instance_vertex_buffer_object_ID);
 
-    // Send the Vertex data to the GPU
     glBindVertexArray(vertex_array_object_ID);
+
+    // Send the Vertex data to the GPU
     glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer_object_ID);
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), &vertices[0], GL_STATIC_DRAW); // Using Static_Draw because we dont care to modify the vertices
 
+    // Send the Index data to the GPU
+    if (add_element_buffer) {
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, element_buffer_object_ID);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);
+    }
+
+    // Set the vertex attribute pointers
     // Position attribute of the Vertex
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
@@ -110,7 +99,8 @@ void Model::draw(const Shader& shader, bool wire_frame) const {
 
     shader.use();
     glBindVertexArray(vertex_array_object_ID);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, vertices.size());
+    if (has_element_buffer) glDrawElements(drawingMode, indices.size(), GL_UNSIGNED_INT, 0);
+    else glDrawArrays(drawingMode, 0, vertices.size());
     glBindVertexArray(0);
 
     if (!keep_GL_DEPTH_TEST_enabled) glDisable(GL_DEPTH_TEST);
@@ -121,10 +111,11 @@ void Model::drawInstanced(const Shader& shader, bool wire_frame) const {
     const bool keep_GL_DEPTH_TEST_enabled = glIsEnabled(GL_DEPTH_TEST);
     glEnable(GL_DEPTH_TEST);
     if (wire_frame) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    
+
     shader.use();
     glBindVertexArray(vertex_array_object_ID);
-    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, vertices.size(), number_of_instances);
+    if (has_element_buffer) glDrawElementsInstanced(drawingMode, indices.size(), GL_UNSIGNED_INT, 0, number_of_instances);
+    else glDrawArraysInstanced(drawingMode, 0, vertices.size(), number_of_instances);
     glBindVertexArray(0);
 
     if (!keep_GL_DEPTH_TEST_enabled) glDisable(GL_DEPTH_TEST);
@@ -140,4 +131,71 @@ void Model::updateAndDrawInstanced(const std::vector<glm::mat4>& transformations
     updateInstancedData(transformations);
     drawInstanced(shader);
 }
-#endif 
+
+void Model::buildCircle(float radius, size_t num_triangles, const glm::vec3& colour) {
+    drawingMode = GL_TRIANGLE_FAN;
+    assert(num_triangles >= 3);
+    const glm::vec3 center = glm::vec3{ 0.0, 0.0, 0.0 };
+
+    for (size_t i = 0; i < num_triangles; i++) {
+
+        vertices.push_back(Vertex{ center, colour });
+
+
+        float angle = ((float)i / (float)num_triangles) * (2.0 * PI);
+        float x = radius * cos(angle);
+        float y = radius * sin(angle);
+        float z = 0.0f;
+        vertices.push_back(Vertex{ glm::vec3{x, y, z}, colour });
+
+
+        angle = ((float)(i + 1) / (float)num_triangles) * (2.0 * PI);
+        x = radius * cos(angle);
+        y = radius * sin(angle);
+        z = 0.0f;
+
+        vertices.push_back(Vertex{ glm::vec3{x, y, z}, colour });
+    }
+}
+
+void Model::buildEllipsoid(float a, float b, float c, size_t stacks, size_t slices, const glm::vec3& colour) {
+    drawingMode = GL_TRIANGLES;
+    has_element_buffer = true;
+    for (int i = 0; i <= stacks; ++i) {
+        // V texture coordinate
+        float V = i / (float)stacks;
+        float phi = V * PI - PI / 2.0;
+        for (int j = 0; j <= slices; ++j) {
+
+            // U texture coordinate
+            float U = j / (float)slices;
+            float theta = U * 2.0 * PI;
+
+            float X = a * cos(phi) * cos(theta);
+            float Y = b * cos(phi) * sin(theta);
+            float Z = c * sin(phi);
+
+            vertices.push_back(Vertex{ glm::vec3(X, Y, Z), colour });
+
+        }
+    }
+
+
+    // creating index buffer
+    int noPerSlice = slices + 1;
+    for (int i = 0; i < stacks; ++i) {
+        for (int j = 0; j < slices; ++j) {
+
+            int start_i = (i * noPerSlice) + j;
+
+            indices.push_back(start_i);
+            indices.push_back(start_i + noPerSlice + 1);
+            indices.push_back(start_i + noPerSlice);
+
+            indices.push_back(start_i + noPerSlice + 1);
+            indices.push_back(start_i);
+            indices.push_back(start_i + 1);
+        }
+    }
+}
+

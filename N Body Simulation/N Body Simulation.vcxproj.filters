@@ -28,6 +28,9 @@
     <Filter Include="Math">
       <UniqueIdentifier>{ea22ef0e-901b-4578-9d9f-73aca003b62c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="New Added Stuff">
+      <UniqueIdentifier>{08f00ee3-e045-4756-89c4-0827da259a93}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -57,13 +60,7 @@
     <ClCompile Include="glad.c">
       <Filter>Extra Dependencies</Filter>
     </ClCompile>
-    <ClCompile Include="ThreadPool.cpp">
-      <Filter>Currently Unused</Filter>
-    </ClCompile>
     <ClCompile Include="TextRenderer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="temp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="EPA.cpp">
@@ -75,14 +72,8 @@
     <ClCompile Include="openGJK.c">
       <Filter>Collision Detection</Filter>
     </ClCompile>
-    <ClCompile Include="Vector.cpp">
-      <Filter>Currently Unused</Filter>
-    </ClCompile>
-    <ClCompile Include="CollidableObject.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="HyperSphereCollision.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="MathFunctions.cpp">
+      <Filter>Math</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -107,9 +98,6 @@
     <ClInclude Include="Simulation.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ThreadPool.hpp">
-      <Filter>Currently Unused</Filter>
-    </ClInclude>
     <ClInclude Include="PhysicsTests.hpp">
       <Filter>Currently Unused</Filter>
     </ClInclude>
@@ -119,12 +107,6 @@
     <ClInclude Include="Polygon.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="StaticCollisionTest.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="temp.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="EPA.hpp">
       <Filter>Collision Detection</Filter>
     </ClInclude>
@@ -132,9 +114,6 @@
       <Filter>Collision Detection</Filter>
     </ClInclude>
     <ClInclude Include="AABB.hpp">
-      <Filter>Collision Detection</Filter>
-    </ClInclude>
-    <ClInclude Include="HyperSphereCollision.hpp">
       <Filter>Collision Detection</Filter>
     </ClInclude>
     <ClInclude Include="VectorSpace.hpp">
@@ -161,18 +140,17 @@
     <ClInclude Include="MinHeap.hpp">
       <Filter>Collision Detection</Filter>
     </ClInclude>
-    <ClInclude Include="VectorAAAA.hpp">
-      <Filter>Currently Unused</Filter>
-    </ClInclude>
     <ClInclude Include="CollidableObject.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="GeometryShader.h">
       <Filter>Shaders</Filter>
     </ClInclude>
-    <ClInclude Include="HyperSphereCollision.asdasdasdadsahpp" />
     <ClInclude Include="GJK_SIGNED_VOLUMES.h">
       <Filter>Collision Detection</Filter>
+    </ClInclude>
+    <ClInclude Include="PhysicsObject.hpp">
+      <Filter>New Added Stuff</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

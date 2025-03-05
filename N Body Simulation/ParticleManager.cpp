@@ -1,5 +1,3 @@
-#if 0
-
 #include "ParticleManager.hpp"
 #include "PhysicsEquations.hpp"
 #include "Particle.hpp"
@@ -442,6 +440,7 @@ void ParticleManager::draw(Model& particle_model, Shader& shader, const glm::vec
         model = glm::scale(model, scale);
         transformations.push_back(model);
     }
+
     particle_model.updateAndDrawInstanced(transformations, shader);
 }
 
@@ -594,4 +593,3 @@ void ParticleManager::updateAndResolveCollisions(double dt, const size_t integra
 }
 
 
-#endif
