@@ -452,6 +452,7 @@ void ParticleManager::updateDataInGPU(Model& particle_model, const glm::vec3& sc
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::translate(model, translateToScreenSpace(p));
         model = glm::scale(model, scale);
+        //model = glm::rotate(model, 45.0f, glm::vec3(1.0f,1.0f,1.0f));
         transformations.push_back(model);
     }
     particle_model.updateInstancedData(transformations);

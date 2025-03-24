@@ -13,8 +13,18 @@
 #include <GLFW/glfw3.h>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include  <algorithm> // for min
-#include <iostream> // for std::cout
+#include <iostream>
+#include <atomic>
+#include <chrono>
+#include <thread>
+#include <vector>
+#include <array>
+#include <algorithm>
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
+#include <GLFW/glfw3.h>
+#include <stop_token>  // For std::jthread stop token (C++20)
+
 
 #define DRAW_DEBUG_DATA_IN_WINDOW 1
 #if DRAW_DEBUG_DATA_IN_WINDOW
@@ -103,6 +113,7 @@ Simulation::Simulation() {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 #ifdef __APPLE__
+    std::cout << "Lol looser get windows" << std::endl;
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
 
@@ -162,6 +173,9 @@ void Simulation::updateViewAndProjection() {
 void Simulation::updatePhysics(double delta_time) {
     pm->updateAndResolveCollisions(delta_time, 1);
 }
+
+
+
 
 void Simulation::startSingleThreaded() {
     pm->add(std::numeric_limits<double>::infinity(), VectorND{ -5.0, 0.0,0.0 });

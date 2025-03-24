@@ -75,6 +75,12 @@
     <ClCompile Include="MathFunctions.cpp">
       <Filter>Math</Filter>
     </ClCompile>
+    <ClCompile Include="Mesh.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CollidableObjectBVHStuff.hpp">
+      <Filter>Currently Unused</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.hpp">
@@ -125,9 +131,6 @@
     <ClInclude Include="Constants.hpp">
       <Filter>Math</Filter>
     </ClInclude>
-    <ClInclude Include="NumberType.hpp">
-      <Filter>Math</Filter>
-    </ClInclude>
     <ClInclude Include="openGJK.h">
       <Filter>Collision Detection</Filter>
     </ClInclude>
@@ -140,9 +143,6 @@
     <ClInclude Include="MinHeap.hpp">
       <Filter>Collision Detection</Filter>
     </ClInclude>
-    <ClInclude Include="CollidableObject.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="GeometryShader.h">
       <Filter>Shaders</Filter>
     </ClInclude>
@@ -151,6 +151,24 @@
     </ClInclude>
     <ClInclude Include="PhysicsObject.hpp">
       <Filter>New Added Stuff</Filter>
+    </ClInclude>
+    <ClInclude Include="Ellipsoid.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CollidableObject.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Shapes.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Mesh.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CollisionEvent.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CollidableObjectRenderer.hpp">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

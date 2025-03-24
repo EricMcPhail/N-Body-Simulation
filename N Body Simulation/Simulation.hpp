@@ -4,6 +4,28 @@
 #include <mutex>
 #include <glm/glm.hpp>
 
+#include <iostream>
+#include <atomic>
+#include <chrono>
+#include <thread>
+#include <vector>
+#include <array>
+#include <algorithm>
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
+#include <GLFW/glfw3.h>
+#include <stop_token>  // For std::jthread stop token (C++20)
+
+
+// Such a small thing, but might help when there is a fuck ton
+// of objects
+#define USE_OPTIMIZATION 1
+
+// Target delays (in milliseconds) for physics and render updates.
+constexpr size_t TARGET_THREAD_DELAY_PHYSICS = 16; // Time between physics updates
+constexpr size_t TARGET_THREAD_DELAY_RENDER = 16; // Time between render updates
+
+
 struct GLFWwindow;
 class Camera;
 class Shader;
@@ -13,9 +35,6 @@ class ThreadPool;
 
 class Simulation {
 public:
-    ThreadPool* thread_pool;
-    bool is_physics_thread_complete;
-
     long double run_time = 0.0;
     std::chrono::time_point<std::chrono::high_resolution_clock> tick_start_time_nanoseconds;
     std::chrono::time_point<std::chrono::high_resolution_clock> tick_end_time_nanoseconds;

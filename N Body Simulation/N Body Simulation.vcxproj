@@ -141,11 +141,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="CollidableObjectBVHStuff.hpp" />
     <ClCompile Include="EPA.cpp" />
     <ClCompile Include="GJK.cpp" />
     <ClCompile Include="glad.c" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MathFunctions.cpp" />
+    <ClCompile Include="Mesh.cpp" />
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="openGJK.c" />
     <ClCompile Include="Particle.cpp" />
@@ -156,6 +158,9 @@
     <ClCompile Include="TextRenderer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CollidableObjectRenderer.hpp" />
+    <ClInclude Include="CollisionEvent.hpp" />
+    <ClInclude Include="Ellipsoid.hpp" />
     <ClInclude Include="AABB.hpp" />
     <ClInclude Include="Camera.hpp" />
     <ClInclude Include="CollidableObject.hpp" />
@@ -164,15 +169,16 @@
     <ClInclude Include="GJK.hpp" />
     <ClInclude Include="GJK_SIGNED_VOLUMES.h" />
     <ClInclude Include="MinHeap.hpp" />
+    <ClInclude Include="Model.hpp" />
     <ClInclude Include="PhysicsObject.hpp" />
-    <ClInclude Include="NumberType.hpp" />
     <ClInclude Include="openGJK.h" />
     <ClInclude Include="Projection.hpp" />
     <ClInclude Include="GeometryShader.h" />
+    <ClInclude Include="Shapes.hpp" />
     <ClInclude Include="testaaaa.hpp" />
     <ClInclude Include="VectorSpace.hpp" />
     <ClInclude Include="MathFunctions.hpp" />
-    <ClInclude Include="Model.hpp" />
+    <ClInclude Include="Mesh.hpp" />
     <ClInclude Include="Particle.hpp" />
     <ClInclude Include="ParticleManager.hpp" />
     <ClInclude Include="PhysicsEquations.hpp" />
